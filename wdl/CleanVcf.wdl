@@ -26,6 +26,7 @@ workflow CleanVcf {
     String linux_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
+    String sv_pipeline_updates_docker
 
     # overrides for mini tasks
     RuntimeAttr? runtime_override_concat_cleaned_vcfs
@@ -73,6 +74,7 @@ workflow CleanVcf {
         project=project,
         linux_docker=linux_docker,
         sv_base_mini_docker=sv_base_mini_docker,
+        sv_pipeline_updates_docker=sv_pipeline_updates_docker,
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_override_clean_vcf_1a=runtime_override_clean_vcf_1a,
         runtime_override_clean_vcf_1b=runtime_override_clean_vcf_1b,
