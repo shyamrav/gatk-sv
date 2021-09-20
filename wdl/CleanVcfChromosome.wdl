@@ -113,7 +113,7 @@ workflow CleanVcfChromosome {
   }
 
   scatter ( included_interval in SplitIncludeList.shards ){
-    call CleanVcf2{
+    call CleanVcf2 {
       input:
         normal_revise_vcf=CleanVcf1b.normal,
         include_list=included_interval,
@@ -336,13 +336,9 @@ task CleanVcf3 {
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
   Float input_size = size(rd_cn_revise, "GB")
-  Float base_disk_gb = 10.0
-  Float base_mem_gb = 2.0
-  Float input_mem_scale = 3.0
-  Float input_disk_scale = 5.0
   RuntimeAttr runtime_default = object {
-    mem_gb: base_mem_gb + input_size * input_mem_scale,
-    disk_gb: ceil(base_disk_gb + input_size * input_disk_scale),
+    mem_gb: 3.75,
+    disk_gb: ceil(10.0 + input_size * 2.0),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
@@ -515,14 +511,12 @@ task DropRedundantCnvs {
 
   Float input_size = size(vcf, "GiB")
   # disk is cheap, read/write speed is proportional to disk size, and disk IO is a significant time factor:
-  Float base_disk_gb = 1000.0
-  Float base_mem_gb = 1.0
-  Float input_mem_scale = 1.5 # in tests on large VCFs, memory usage is ~1.0 * input VCF size
-  Float input_disk_scale = 2.0 # the biggest disk usage is at the end of the task, with input + output VCF on disk
+  # in tests on large VCFs, memory usage is ~1.0 * input VCF size
+  # the biggest disk usage is at the end of the task, with input + output VCF on disk
   Int cpu_cores = 2 # speed up compression / decompression of VCFs
   RuntimeAttr runtime_default = object {
-    mem_gb: base_mem_gb + input_size * input_mem_scale,
-    disk_gb: ceil(base_disk_gb + input_size * input_disk_scale),
+    mem_gb: 3.75 + input_size * 1.5,
+    disk_gb: ceil(100.0 + input_size * 2.0),
     cpu_cores: cpu_cores,
     preemptible_tries: 3,
     max_retries: 1,
@@ -540,10 +534,9 @@ task DropRedundantCnvs {
   }
 
   command <<<
-    set -eu -o pipefail
-
+    set -euo pipefail
     /opt/sv-pipeline/04_variant_resolution/scripts/resolve_cpx_cnv_redundancies.py \
-      ~{vcf} ~{concise_vcf_name} --temp-dir /cromwell_root/tmp
+      ~{vcf} ~{concise_vcf_name} --temp-dir ./tmp
   >>>
 
   output {
