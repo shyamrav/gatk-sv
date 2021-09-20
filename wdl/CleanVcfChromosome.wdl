@@ -2,8 +2,6 @@ version 1.0
 
 import "Structs.wdl"
 import "TasksMakeCohortVcf.wdl" as MiniTasks
-import "CleanVcf1.wdl" as c1
-import "CleanVcf1b.wdl" as c1b
 import "CleanVcf5.wdl" as c5
 import "HailMerge.wdl" as HailMerge
 
@@ -65,15 +63,14 @@ workflow CleanVcfChromosome {
   }
 
   scatter ( vcf_shard in SplitVcfToClean.vcf_shards ) {
-    call c1.CleanVcf1 as CleanVcf1a {
+    call CleanVcf1a {
       input:
         vcf=vcf_shard,
-        background_list=background_list,
-        ped_file=ped_file,
-        sv_pipeline_docker=sv_pipeline_docker,
-        linux_docker=linux_docker,
+        background_fail_list=background_list,
         bothsides_pass_list=bothsides_pass_list,
+        ped_file=ped_file,
         allosome_fai=allosome_fai,
+        sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_clean_vcf_1a
     }
   }
@@ -212,6 +209,68 @@ workflow CleanVcfChromosome {
 }
 
 
+task CleanVcf1a {
+  input {
+    File vcf
+    File background_fail_list
+    File bothsides_pass_list
+    File ped_file
+    File allosome_fai
+    String sv_pipeline_docker
+    RuntimeAttr? runtime_attr_override
+  }
+
+  Float input_size = size([vcf, background_fail_list, bothsides_pass_list], "GB")
+  RuntimeAttr runtime_default = object {
+                                  mem_gb: 3.75,
+                                  disk_gb: ceil(10.0 + input_size * 2),
+                                  cpu_cores: 1,
+                                  preemptible_tries: 3,
+                                  max_retries: 1,
+                                  boot_disk_gb: 10
+                                }
+  RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
+  runtime {
+    memory: "~{select_first([runtime_override.mem_gb, runtime_default.mem_gb])} GB"
+    disks: "local-disk ~{select_first([runtime_override.disk_gb, runtime_default.disk_gb])} HDD"
+    cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
+    preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
+    maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
+    docker: sv_pipeline_docker
+    bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
+  }
+
+  command <<<
+    set -euo pipefail
+
+    # outputs
+    # includelist.txt: the names of all the samples in the input vcf
+    # sexchr.revise.txt: the names of the events where genotypes got tweaked on allosomes
+    # int.vcf.gz: a revised vcf, bgzipped
+    zcat ~{vcf} \
+      | awk -v allosomeFile="~{allosome_fai}" -v pedFile="~{ped_file}" -v bgdFile="~{background_fail_list}" \
+        -f /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1.awk \
+      | bgzip \
+      > int.vcf.gz
+    rm ~{vcf} ~{background_fail_list} ~{ped_file}
+
+    /opt/sv-pipeline/04_variant_resolution/scripts/add_bothsides_support_filter.py \
+      --bgzip \
+      --outfile int.w_bothsides.vcf.gz \
+      int.vcf.gz \
+      ~{bothsides_pass_list}
+    tabix int.w_bothsides.vcf.gz
+  >>>
+
+  output {
+    File include_list="includelist.txt"
+    File sex="sexchr.revise.txt"
+    File intermediate_vcf="int.w_bothsides.vcf.gz"
+    File intermediate_vcf_idx="int.w_bothsides.vcf.gz.tbi"
+  }
+}
+
+
 task CleanVcf2 {
   input {
     File normal_revise_vcf
@@ -299,7 +358,7 @@ task CleanVcf3{
 
   command <<<
     set -euo pipefail
-    
+
     /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part3.sh ~{rd_cn_revise}
 
     # Ensure there is at least one shard
