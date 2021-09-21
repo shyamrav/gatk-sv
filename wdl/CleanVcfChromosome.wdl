@@ -188,8 +188,7 @@ workflow CleanVcfChromosome {
   call StitchFragmentedCnvs {
     input:
       vcf=DropRedundantCnvs.cleaned_vcf_shard,
-      contig=contig,
-      prefix=prefix,
+      prefix="~{prefix}.stitched",
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_stitch_fragmented_cnvs
   }
@@ -198,7 +197,7 @@ workflow CleanVcfChromosome {
     input:
       vcf=StitchFragmentedCnvs.stitched_vcf_shard,
       contig=contig,
-      prefix=prefix,
+      prefix="~{prefix}.final",
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_final_cleanup
 
@@ -588,32 +587,28 @@ task DropRedundantCnvs {
 task StitchFragmentedCnvs {
   input {
     File vcf
-    String contig
     String prefix
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
-  
-  String stitched_vcf_name = contig + ".shard.fragmented_CNVs_stitched.vcf.gz"
 
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
   Float input_size = size(vcf, "GB")
-  Float base_disk_gb = 10.0
-  Float base_mem_gb = 2.0
-  Float input_mem_scale = 3.0
-  Float input_disk_scale = 5.0
   RuntimeAttr runtime_default = object {
-    mem_gb: base_mem_gb + input_size * input_mem_scale,
-    disk_gb: ceil(base_disk_gb + input_size * input_disk_scale),
+    mem_gb: 3.75,
+    disk_gb: ceil(10.0 + input_size * 2),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
     boot_disk_gb: 10
   }
   RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
+  Float mem_gb = select_first([runtime_override.mem_gb, runtime_default.mem_gb])
+  Int java_mem_mb = ceil(mem_gb * 1000 * 0.8)
+
   runtime {
-    memory: "~{select_first([runtime_override.mem_gb, runtime_default.mem_gb])} GB"
+    memory: "~{mem_gb} GB"
     disks: "local-disk ~{select_first([runtime_override.disk_gb, runtime_default.disk_gb])} HDD"
     cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
     preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
@@ -623,19 +618,22 @@ task StitchFragmentedCnvs {
   }
 
   command <<<
-    set -eu -o pipefail
-    
-    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
-      ~{vcf} \
-      "tmp_~{stitched_vcf_name}"
-    
-    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
-      "tmp_~{stitched_vcf_name}" \
-      "~{stitched_vcf_name}"
+    set -euo pipefail
+
+    echo "First pass..."
+    java -Xmx~{java_mem_mb}M -jar /opt/sv-pipeline/java/StitchFragmentedCNVs.jar 0.2 200000 0.2 ~{vcf} \
+      | bgzip \
+      > tmp.vcf.gz
+    rm ~{vcf}
+
+    echo "Second pass..."
+    java -Xmx~{java_mem_mb}M -jar /opt/sv-pipeline/java/StitchFragmentedCNVs.jar 0.2 200000 0.2 tmp.vcf.gz \
+      | bgzip \
+      > ~{prefix}.vcf.gz
   >>>
 
   output {
-    File stitched_vcf_shard = stitched_vcf_name
+    File stitched_vcf_shard = "~{prefix}.vcf.gz"
   }
 }
 
@@ -649,8 +647,6 @@ task FinalCleanup {
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
-  
-  String cleaned_shard_name = prefix + "." + contig + ".final_cleanup.vcf.gz"
 
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
@@ -689,12 +685,12 @@ task FinalCleanup {
       | /opt/sv-pipeline/04_variant_resolution/scripts/sanitize_filter_field.py stdin stdout \
       | fgrep -v "##INFO=<ID=MEMBERS,Number=.,Type=String," \
       | bgzip -c \
-      > "~{cleaned_shard_name}"
-    tabix ~{cleaned_shard_name}
+      > ~{prefix}.vcf.gz
+    tabix ~{prefix}.vcf.gz
   >>>
 
   output {
-    File final_cleaned_shard = cleaned_shard_name
-    File final_cleaned_shard_idx = cleaned_shard_name + ".tbi"
+    File final_cleaned_shard = "~{prefix}.vcf.gz"
+    File final_cleaned_shard_idx = "~{prefix}.vcf.gz.tbi"
   }
 }

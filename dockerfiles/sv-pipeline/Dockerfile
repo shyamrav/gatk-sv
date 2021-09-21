@@ -48,3 +48,14 @@ RUN apt-get -qqy update --fix-missing && \
            /usr/share/man/?? \
            /usr/share/man/??_*
 ENV PATH="/opt/:${PATH}"
+
+# Compile and test StitchFragmentedCNVs Java program
+RUN cd /opt/sv-pipeline/java && \
+    mkdir stitch && \
+    javac -d ./stitch StitchFragmentedCNVs.java VCFParser.java && \
+    cd stitch && \
+    jar cvfe StitchFragmentedCNVs.jar StitchFragmentedCNVs *.class && \
+    mv StitchFragmentedCNVs.jar ../ && \
+    cd .. && \
+    rm -rf stitch && \
+    (java -jar /opt/sv-pipeline/java/StitchFragmentedCNVs.jar || true)
