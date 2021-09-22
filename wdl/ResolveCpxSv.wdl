@@ -405,7 +405,7 @@ task SvtkResolve {
   # be held in memory or disk while working, potentially in a form that takes up more space)
   Float input_size = size([vcf, merged_discfile], "GiB")
   RuntimeAttr runtime_default = object {
-    mem_gb: 3 + input_size * 10,
+    mem_gb: 3 + input_size * 20,
     disk_gb: ceil(10 + input_size * 12),
     cpu_cores: 1,
     preemptible_tries: 3,
