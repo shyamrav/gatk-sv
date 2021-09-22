@@ -28,50 +28,52 @@ workflow CleanVcf5 {
         RuntimeAttr? runtime_attr_override_polish
     }
 
-    call ScatterVcf as ScatterVcfPart5 {
+    call ScatterVcf {
         input:
             vcf=normal_revise_vcf,
             records_per_shard = records_per_shard,
-            shard_prefix = prefix + "." + contig + ".shard_clean_vcf_5",
+            shard_prefix = "~{prefix}.scatter_vcf",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_override_scatter
     }
 
-    scatter ( clean_gq_shard in ScatterVcfPart5.shards ) {
-        call CleanVcf5MakeCleanGQ {
+    scatter ( i in range(length(ScatterVcf.shards)) ) {
+        call MakeCleanGQ {
             input:
                 revise_vcf_lines=revise_vcf_lines,
-                normal_revise_vcf=clean_gq_shard,
+                normal_revise_vcf=ScatterVcf.shards[i],
                 ped_file=ped_file,
                 sex_chr_revise=sex_chr_revise,
                 multi_ids=multi_ids,
                 outlier_samples_list=outlier_samples_list,
                 make_clean_gq_script=make_clean_gq_script,
-                shard_prefix=prefix + "." + contig + ".shard_clean_vcf_5",
+                prefix="~{prefix}.make_clean_gq.shard_~{i}",
                 sv_pipeline_docker=sv_pipeline_docker,
                 runtime_attr_override=runtime_attr_override_make_cleangq
         }
     }
 
-    call CleanVcf5FindRedundantMultiallelics {
+    call FindRedundantMultiallelics {
         input:
-            multiallelic_vcfs=CleanVcf5MakeCleanGQ.multiallelic_vcf,
+            multiallelic_vcfs=MakeCleanGQ.multiallelic_vcf,
             find_redundant_sites_script=find_redundant_sites_script,
+            prefix="~{prefix}.find_redundant_multiallelics",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_override_find_redundant_multiallelics
     }
 
-    call CleanVcf5Polish {
+    call Polish {
         input:
-            clean_gq_vcfs=CleanVcf5MakeCleanGQ.clean_gq_vcf,
-            no_sample_lists=CleanVcf5MakeCleanGQ.no_sample_list,
-            redundant_multiallelics_list=CleanVcf5FindRedundantMultiallelics.redundant_multiallelics_list,
+            clean_gq_vcfs=MakeCleanGQ.clean_gq_vcf,
+            no_sample_lists=MakeCleanGQ.no_sample_list,
+            redundant_multiallelics_list=FindRedundantMultiallelics.redundant_multiallelics_list,
+            prefix="~{prefix}.polish",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_override_polish
     }
 
     output {
-        File polished=CleanVcf5Polish.polished
+        File polished=Polish.polished
     }
 }
 
@@ -118,7 +120,7 @@ task ScatterVcf {
     }
 }
 
-task CleanVcf5MakeCleanGQ {
+task MakeCleanGQ {
     input {
         File revise_vcf_lines
         File normal_revise_vcf
@@ -127,7 +129,7 @@ task CleanVcf5MakeCleanGQ {
         File multi_ids
         File? outlier_samples_list
         File? make_clean_gq_script
-        String shard_prefix
+        String prefix
         Int? threads = 2
         String sv_pipeline_docker
         RuntimeAttr? runtime_attr_override
@@ -139,8 +141,6 @@ task CleanVcf5MakeCleanGQ {
                        select_all([revise_vcf_lines, normal_revise_vcf, ped_file, sex_chr_revise, multi_ids, outlier_samples_list]),
                        "GB")
     Float base_disk_gb = 10.0
-
-    String file_basename = basename(normal_revise_vcf, ".vcf.gz")
 
     RuntimeAttr runtime_default = object {
                                       mem_gb: 16,
@@ -178,24 +178,25 @@ task CleanVcf5MakeCleanGQ {
             ~{sex_chr_revise} \
             ~{multi_ids} \
             outliers.txt \
-            ~{file_basename}
+            ~{prefix}
 
-        bcftools view -G -O z ~{file_basename}.multiallelic.vcf.gz > ~{file_basename}.multiallelic.sites.vcf.gz
-        tabix ~{file_basename}.cleanGQ.vcf.gz
+        bcftools view -G -O z ~{prefix}.multiallelic.vcf.gz > ~{prefix}.multiallelic.sites.vcf.gz
+        tabix ~{prefix}.cleanGQ.vcf.gz
     >>>
 
     output {
-        File clean_gq_vcf=file_basename + ".cleanGQ.vcf.gz"
-        File clean_gq_vcf_idx=file_basename + ".cleanGQ.vcf.gz.tbi"
-        File multiallelic_vcf=file_basename + ".multiallelic.sites.vcf.gz"
-        File no_sample_list = file_basename + ".no_called_samples.list"
+        File clean_gq_vcf=prefix + ".cleanGQ.vcf.gz"
+        File clean_gq_vcf_idx=prefix + ".cleanGQ.vcf.gz.tbi"
+        File multiallelic_vcf=prefix + ".multiallelic.sites.vcf.gz"
+        File no_sample_list = prefix + ".no_called_samples.list"
     }
 }
 
-task CleanVcf5FindRedundantMultiallelics {
+task FindRedundantMultiallelics {
     input {
         Array[File] multiallelic_vcfs
         File? find_redundant_sites_script
+        String prefix
         String sv_pipeline_docker
         RuntimeAttr? runtime_attr_override
     }
@@ -232,21 +233,22 @@ task CleanVcf5FindRedundantMultiallelics {
 
         python3 ~{default="/opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part5_find_redundant_multiallelics.py" find_redundant_sites_script} \
             multiallelic.vcf.gz \
-            redundant_multiallelics.list
+            ~{prefix}.list
 
     >>>
 
     output {
-        File redundant_multiallelics_list="redundant_multiallelics.list"
+        File redundant_multiallelics_list="~{prefix}.list"
     }
 }
 
 
-task CleanVcf5Polish {
+task Polish {
     input {
         Array[File] clean_gq_vcfs
         Array[File] no_sample_lists
         File redundant_multiallelics_list
+        String prefix
         String sv_pipeline_docker
         Int threads = 2
         RuntimeAttr? runtime_attr_override
@@ -293,10 +295,10 @@ task CleanVcf5Polish {
             | awk 'NR > 1' \
             | egrep -v "CIPOS|CIEND|RMSSTD|EVENT|INFO=<ID=UNRESOLVED,|source|varGQ|bcftools|ALT=<ID=UNR|INFO=<ID=MULTIALLELIC," \
             | sort -k1,1 >> new_header.vcf
-        bcftools reheader polished.need_reheader.vcf.gz -h new_header.vcf -o polished.vcf.gz
+        bcftools reheader polished.need_reheader.vcf.gz -h new_header.vcf -o ~{prefix}.vcf.gz
     >>>
 
     output {
-        File polished="polished.vcf.gz"
+        File polished="~{prefix}.vcf.gz"
     }
 }

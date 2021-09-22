@@ -71,7 +71,7 @@ workflow CleanVcf {
         ped_file=merged_ped_file,
         bothsides_pass_list=complex_resolve_bothside_pass_lists[i],
         allosome_fai=allosome_fai,
-        prefix=cohort_name,
+        prefix="~{cohort_name}.~{contig}",
         max_shards_per_chrom_step1=max_shards_per_chrom_clean_vcf_step1,
         min_records_per_shard_step1=min_records_per_shard_clean_vcf_step1,
         samples_per_step2_shard=samples_per_clean_vcf_step2_shard,
