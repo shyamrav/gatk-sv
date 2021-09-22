@@ -191,7 +191,7 @@ workflow CleanVcfChromosome {
       contig=contig,
       prefix="~{prefix}.clean_vcf_5",
       records_per_shard=clean_vcf5_records_per_shard,
-      sv_pipeline_docker=sv_pipeline_docker,
+      sv_pipeline_docker=sv_pipeline_updates_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override_scatter=runtime_override_clean_vcf_5_scatter,
       runtime_attr_override_make_cleangq=runtime_override_clean_vcf_5_make_cleangq,
