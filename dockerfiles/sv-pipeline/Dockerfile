@@ -54,7 +54,7 @@ ENV PATH="/opt/sv-pipeline/java/build/":$PATH
 RUN cd /opt/sv-pipeline/java && \
     mkdir -p build/classes && \
     javac -d build/classes ./org/broadinstitute/svpipeline/StitchFragmentedCNVs.java org/broadinstitute/svpipeline/VCFParser.java && \
-    jar --create --file build/StitchFragmentedCNVs.jar -e "org.broadinstitute.svpipeline.StitchFragmentedCNVs" -C build/classes . && \
+    jar cfe build/StitchFragmentedCNVs.jar "org.broadinstitute.svpipeline.StitchFragmentedCNVs" -C build/classes . && \
     rm -r build/classes && \
     (java -jar StitchFragmentedCNVs.jar || true) && \
     rm -rf /tmp/* /var/tmp/*
