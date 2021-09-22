@@ -403,8 +403,7 @@ task SvtkResolve {
 
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
-  Float input_size = size(
-    [vcf, cytobands, mei_bed, pe_exclude_list, pe_exclude_list_idx,merged_discfile], "GiB")
+  Float input_size = size([vcf, merged_discfile], "GiB")
   RuntimeAttr runtime_default = object {
     mem_gb: 3 + input_size * 10,
     disk_gb: ceil(10 + input_size * 12),
