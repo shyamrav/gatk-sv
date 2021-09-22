@@ -49,16 +49,12 @@ workflow CleanVcfChromosome {
 
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_split_vcf_to_clean
-    RuntimeAttr? runtime_override_combine_step_1_vcfs
     RuntimeAttr? runtime_override_combine_step_1_sex_chr_revisions
     RuntimeAttr? runtime_override_split_include_list
     RuntimeAttr? runtime_override_combine_clean_vcf_2
     RuntimeAttr? runtime_override_combine_revised_4
     RuntimeAttr? runtime_override_combine_multi_ids_4
-    RuntimeAttr? runtime_override_clean_vcf_5_scatter
-    RuntimeAttr? runtime_override_clean_vcf_5_make_cleangq
-    RuntimeAttr? runtime_override_clean_vcf_5_find_redundant_multiallelics
-    RuntimeAttr? runtime_override_clean_vcf_5_polish
+    RuntimeAttr? runtime_override_drop_redundant_cnvs
 
   }
 
@@ -191,6 +187,7 @@ workflow CleanVcfChromosome {
       contig=contig,
       prefix="~{prefix}.clean_vcf_5",
       records_per_shard=clean_vcf5_records_per_shard,
+      threads_per_task=clean_vcf5_threads_per_task,
       sv_pipeline_docker=sv_pipeline_updates_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override_scatter=runtime_override_clean_vcf_5_scatter,
@@ -204,7 +201,8 @@ workflow CleanVcfChromosome {
       vcf=CleanVcf5.polished,
       prefix="~{prefix}.drop_redundant_cnvs",
       contig=contig,
-      sv_pipeline_docker=sv_pipeline_updates_docker
+      sv_pipeline_docker=sv_pipeline_updates_docker,
+      runtime_attr_override=runtime_override_drop_redundant_cnvs
   }
 
   call StitchFragmentedCnvs {

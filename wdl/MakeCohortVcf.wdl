@@ -164,7 +164,6 @@ workflow MakeCohortVcf {
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
     RuntimeAttr? runtime_override_split_vcf_to_clean
-    RuntimeAttr? runtime_override_combine_step_1_vcfs
     RuntimeAttr? runtime_override_combine_step_1_sex_chr_revisions
     RuntimeAttr? runtime_override_split_include_list
     RuntimeAttr? runtime_override_combine_clean_vcf_2
@@ -327,9 +326,9 @@ workflow MakeCohortVcf {
       merged_ped_file=ped_file,
       contig_list=contig_list,
       allosome_fai=allosome_fai,
-      max_shards_per_chrom_clean_vcf_step1=max_shards_per_chrom_clean_vcf_step1,
-      min_records_per_shard_clean_vcf_step1=min_records_per_shard_clean_vcf_step1,
-      samples_per_clean_vcf_step2_shard=samples_per_clean_vcf_step2_shard,
+      max_shards_per_chrom_step1=max_shards_per_chrom_clean_vcf_step1,
+      min_records_per_shard_step1=min_records_per_shard_clean_vcf_step1,
+      samples_per_step2_shard=samples_per_clean_vcf_step2_shard,
       max_samples_per_shard_step3=max_samples_per_shard_clean_vcf_step3,
       clean_vcf5_records_per_shard=clean_vcf5_records_per_shard,
       clean_vcf5_threads_per_task=clean_vcf5_threads_per_task,
@@ -352,7 +351,6 @@ workflow MakeCohortVcf {
       runtime_override_stitch_fragmented_cnvs=runtime_override_stitch_fragmented_cnvs,
       runtime_override_final_cleanup=runtime_override_final_cleanup,
       runtime_override_split_vcf_to_clean=runtime_override_split_vcf_to_clean,
-      runtime_override_combine_step_1_vcfs=runtime_override_combine_step_1_vcfs,
       runtime_override_combine_step_1_sex_chr_revisions=runtime_override_combine_step_1_sex_chr_revisions,
       runtime_override_split_include_list=runtime_override_split_include_list,
       runtime_override_combine_clean_vcf_2=runtime_override_combine_clean_vcf_2,
