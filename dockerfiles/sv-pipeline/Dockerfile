@@ -50,12 +50,12 @@ RUN apt-get -qqy update --fix-missing && \
 ENV PATH="/opt/:${PATH}"
 
 # Compile and test StitchFragmentedCNVs Java program
-RUN cd /opt/sv-pipeline/java && \
+RUN cd /opt/sv-pipeline/java/org/broadinstitute/svpipeline && \
     mkdir stitch && \
     javac -d ./stitch StitchFragmentedCNVs.java VCFParser.java && \
     cd stitch && \
-    jar cvfe StitchFragmentedCNVs.jar StitchFragmentedCNVs *.class && \
-    mv StitchFragmentedCNVs.jar ../ && \
+    jar cvfe /opt/sv-pipeline/java/StitchFragmentedCNVs.jar StitchFragmentedCNVs *.class && \
     cd .. && \
     rm -rf stitch && \
-    (java -jar /opt/sv-pipeline/java/StitchFragmentedCNVs.jar || true)
+    (java -jar /opt/sv-pipeline/java/StitchFragmentedCNVs.jar || true) && \
+    rm -rf /tmp/* /var/tmp/*
