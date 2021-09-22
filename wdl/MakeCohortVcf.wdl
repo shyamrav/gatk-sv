@@ -45,6 +45,8 @@ workflow MakeCohortVcf {
     Int max_shards_per_chrom_clean_vcf_step1
     Int min_records_per_shard_clean_vcf_step1
     Int samples_per_clean_vcf_step2_shard
+    Int clean_vcf5_records_per_shard
+    Int? clean_vcf5_threads_per_task
     Float min_sr_background_fail_batches
     Int? max_samples_per_shard_clean_vcf_step3
 
@@ -154,7 +156,10 @@ workflow MakeCohortVcf {
     RuntimeAttr? runtime_override_clean_vcf_2
     RuntimeAttr? runtime_override_clean_vcf_3
     RuntimeAttr? runtime_override_clean_vcf_4
-    RuntimeAttr? runtime_override_clean_vcf_5
+    RuntimeAttr? runtime_override_clean_vcf_5_scatter
+    RuntimeAttr? runtime_override_clean_vcf_5_make_cleangq
+    RuntimeAttr? runtime_override_clean_vcf_5_find_redundant_multiallelics
+    RuntimeAttr? runtime_override_clean_vcf_5_polish
     RuntimeAttr? runtime_override_drop_redundant_cnvs
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
@@ -326,6 +331,8 @@ workflow MakeCohortVcf {
       min_records_per_shard_clean_vcf_step1=min_records_per_shard_clean_vcf_step1,
       samples_per_clean_vcf_step2_shard=samples_per_clean_vcf_step2_shard,
       max_samples_per_shard_step3=max_samples_per_shard_clean_vcf_step3,
+      clean_vcf5_records_per_shard=clean_vcf5_records_per_shard,
+      clean_vcf5_threads_per_task=clean_vcf5_threads_per_task,
       outlier_samples_list=outlier_samples_list,
       hail_script=hail_script,
       project=project,
@@ -338,7 +345,10 @@ workflow MakeCohortVcf {
       runtime_override_clean_vcf_2=runtime_override_clean_vcf_2,
       runtime_override_clean_vcf_3=runtime_override_clean_vcf_3,
       runtime_override_clean_vcf_4=runtime_override_clean_vcf_4,
-      runtime_override_clean_vcf_5=runtime_override_clean_vcf_5,
+      runtime_override_clean_vcf_5_scatter=runtime_override_clean_vcf_5_scatter,
+      runtime_override_clean_vcf_5_make_cleangq=runtime_override_clean_vcf_5_make_cleangq,
+      runtime_override_clean_vcf_5_find_redundant_multiallelics=runtime_override_clean_vcf_5_find_redundant_multiallelics,
+      runtime_override_clean_vcf_5_polish=runtime_override_clean_vcf_5_polish,
       runtime_override_stitch_fragmented_cnvs=runtime_override_stitch_fragmented_cnvs,
       runtime_override_final_cleanup=runtime_override_final_cleanup,
       runtime_override_split_vcf_to_clean=runtime_override_split_vcf_to_clean,

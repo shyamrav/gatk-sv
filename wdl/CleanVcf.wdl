@@ -18,6 +18,8 @@ workflow CleanVcf {
     Int min_records_per_shard_clean_vcf_step1
     Int samples_per_clean_vcf_step2_shard
     Int? max_samples_per_shard_step3
+    Int clean_vcf5_records_per_shard
+    Int? clean_vcf5_threads_per_task
 
     File? outlier_samples_list
 
@@ -38,7 +40,10 @@ workflow CleanVcf {
     RuntimeAttr? runtime_override_clean_vcf_2
     RuntimeAttr? runtime_override_clean_vcf_3
     RuntimeAttr? runtime_override_clean_vcf_4
-    RuntimeAttr? runtime_override_clean_vcf_5
+    RuntimeAttr? runtime_override_clean_vcf_5_scatter
+    RuntimeAttr? runtime_override_clean_vcf_5_make_cleangq
+    RuntimeAttr? runtime_override_clean_vcf_5_find_redundant_multiallelics
+    RuntimeAttr? runtime_override_clean_vcf_5_polish
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
     RuntimeAttr? runtime_override_split_vcf_to_clean
@@ -74,6 +79,7 @@ workflow CleanVcf {
         outlier_samples_list=outlier_samples_list,
         hail_script=hail_script,
         project=project,
+        clean_vcf5_records_per_shard=clean_vcf5_records_per_shard,
         linux_docker=linux_docker,
         sv_base_mini_docker=sv_base_mini_docker,
         sv_pipeline_updates_docker=sv_pipeline_updates_docker,
@@ -83,7 +89,7 @@ workflow CleanVcf {
         runtime_override_clean_vcf_2=runtime_override_clean_vcf_2,
         runtime_override_clean_vcf_3=runtime_override_clean_vcf_3,
         runtime_override_clean_vcf_4=runtime_override_clean_vcf_4,
-        runtime_override_clean_vcf_5=runtime_override_clean_vcf_5,
+
         runtime_override_stitch_fragmented_cnvs=runtime_override_stitch_fragmented_cnvs,
         runtime_override_final_cleanup=runtime_override_final_cleanup,
         runtime_override_split_vcf_to_clean=runtime_override_split_vcf_to_clean,
