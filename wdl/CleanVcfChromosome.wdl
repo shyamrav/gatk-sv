@@ -269,6 +269,8 @@ task CleanVcf1a {
     # includelist.txt: the names of all the samples in the input vcf
     # sexchr.revise.txt: the names of the events where genotypes got tweaked on allosomes
     # stdout: a revised vcf
+    touch includelist.txt
+    touch sexchr.revise.txt
     zcat ~{vcf} \
       | awk \
         -v allosomeFile="~{allosome_fai}" \
