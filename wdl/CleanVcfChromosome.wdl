@@ -385,7 +385,7 @@ task CleanVcf2 {
   >>>
 
   output {
-    File out="output.txt"
+    File out="~{prefix}.txt"
   }
 }
 
