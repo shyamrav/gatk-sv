@@ -613,11 +613,9 @@ task StitchFragmentedCnvs {
     RuntimeAttr? runtime_attr_override
   }
 
-  # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
-  # generally assume working memory is ~3 * inputs
   Float input_size = size(vcf, "GB")
   RuntimeAttr runtime_default = object {
-    mem_gb: 3.75,
+    mem_gb: 7.5,
     disk_gb: ceil(10.0 + input_size * 2),
     cpu_cores: 1,
     preemptible_tries: 3,
