@@ -424,11 +424,8 @@ task CleanVcf3 {
     set -euo pipefail
     
     python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part3.py ~{rd_cn_revise} -s ~{max_samples_shard_}
-
     # Ensure there is at least one shard
-    if [ -z "$(ls -A shards/)" ]; then
-      touch shards/out.0_0.txt
-    fi
+    touch shards/out.0_0.txt
   >>>
 
   output {
