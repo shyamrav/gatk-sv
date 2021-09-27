@@ -285,7 +285,7 @@ task ResolvePrep {
   # bedtools merge, which should only need to keep a few records in memory at a time.
   RuntimeAttr runtime_default = object {
     mem_gb: 2.0,
-    disk_gb: ceil(10.0 + 10.0 * size(vcf, "GiB")),
+    disk_gb: ceil(20.0 + 10.0 * size(vcf, "GiB")),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
@@ -405,7 +405,7 @@ task SvtkResolve {
   # be held in memory or disk while working, potentially in a form that takes up more space)
   Float input_size = size([vcf, merged_discfile], "GiB")
   RuntimeAttr runtime_default = object {
-    mem_gb: 3 + size(vcf, "GiB") * 20 + size(merged_discfile, "GiB") * 40,
+    mem_gb: 3 + size(vcf, "GiB") * 40 + size(merged_discfile, "GiB") * 80,
     disk_gb: ceil(10 + input_size * 12),
     cpu_cores: 1,
     preemptible_tries: 3,
