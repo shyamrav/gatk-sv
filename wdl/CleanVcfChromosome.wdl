@@ -43,9 +43,13 @@ workflow CleanVcfChromosome {
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
 
-    RuntimeAttr? runtime_override_preconcat
-    RuntimeAttr? runtime_override_hail_merge
-    RuntimeAttr? runtime_override_fix_header
+    RuntimeAttr? runtime_override_preconcat_step1
+    RuntimeAttr? runtime_override_hail_merge_step1
+    RuntimeAttr? runtime_override_fix_header_step1
+
+    RuntimeAttr? runtime_override_preconcat_drc
+    RuntimeAttr? runtime_override_hail_merge_drc
+    RuntimeAttr? runtime_override_fix_header_drc
 
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_split_vcf_to_clean
@@ -90,9 +94,9 @@ workflow CleanVcfChromosome {
       hail_script=hail_script,
       project=project,
       sv_base_mini_docker=sv_base_mini_docker,
-      runtime_override_preconcat=runtime_override_preconcat,
-      runtime_override_hail_merge=runtime_override_hail_merge,
-      runtime_override_fix_header=runtime_override_fix_header
+      runtime_override_preconcat=runtime_override_preconcat_step1,
+      runtime_override_hail_merge=runtime_override_hail_merge_step1,
+      runtime_override_fix_header=runtime_override_fix_header_step1
   }
 
   call MiniTasks.CatUncompressedFiles as CombineStep1SexChrRevisions {
@@ -205,9 +209,21 @@ workflow CleanVcfChromosome {
       runtime_attr_override=runtime_override_drop_redundant_cnvs
   }
 
+  call HailMerge.HailMerge as SortDropRedundantCnvs {
+    input:
+      vcfs=[DropRedundantCnvs.out],
+      prefix="~{prefix}.drop_redundant_cnvs.sorted",
+      hail_script=hail_script,
+      project=project,
+      sv_base_mini_docker=sv_base_mini_docker,
+      runtime_override_preconcat=runtime_override_preconcat_drc,
+      runtime_override_hail_merge=runtime_override_hail_merge_drc,
+      runtime_override_fix_header=runtime_override_fix_header_drc
+  }
+
   call StitchFragmentedCnvs {
     input:
-      vcf=DropRedundantCnvs.cleaned_vcf_shard,
+      vcf=SortDropRedundantCnvs.merged_vcf,
       prefix="~{prefix}.stitch_fragmented_cnvs",
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_stitch_fragmented_cnvs
@@ -599,7 +615,7 @@ task DropRedundantCnvs {
   >>>
 
   output {
-    File cleaned_vcf_shard = "~{prefix}.vcf.gz"
+    File out = "~{prefix}.vcf.gz"
   }
 }
 

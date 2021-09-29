@@ -16,19 +16,21 @@ workflow HailMerge {
   }
 
   # Concatenate vcfs naively to prevent ClassTooLargeException in Hail
-  call MiniTasks.ConcatVcfs as Preconcat {
-    input:
-      vcfs=vcfs,
-      naive=true,
-      generate_index=false,
-      outfile_prefix="~{prefix}.preconcat",
-      sv_base_mini_docker=sv_base_mini_docker,
-      runtime_attr_override=runtime_override_preconcat
+  if (length(vcfs) > 1) {
+    call MiniTasks.ConcatVcfs as Preconcat {
+      input:
+        vcfs=vcfs,
+        naive=true,
+        generate_index=false,
+        outfile_prefix="~{prefix}.preconcat",
+        sv_base_mini_docker=sv_base_mini_docker,
+        runtime_attr_override=runtime_override_preconcat
+    }
   }
 
   call HailMerge {
     input:
-      vcfs = [Preconcat.concat_vcf],
+      vcfs = [select_first([Preconcat.concat_vcf, vcfs[0]])],
       hail_script = hail_script,
       prefix = prefix,
       project = project,
