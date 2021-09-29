@@ -639,16 +639,13 @@ task StitchFragmentedCnvs {
   command <<<
     set -euo pipefail
 
-    echo "First pass..."
-    java -Xmx~{java_mem_mb}M -jar ${STITCH_JAR} 0.2 200000 0.2 ~{vcf} \
-      | bgzip \
-      > tmp.vcf.gz
-    rm ~{vcf}
+    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
+      ~{vcf} \
+      tmp.vcf.gz
 
-    echo "Second pass..."
-    java -Xmx~{java_mem_mb}M -jar ${STITCH_JAR} 0.2 200000 0.2 tmp.vcf.gz \
-      | bgzip \
-      > ~{prefix}.vcf.gz
+    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
+      tmp.vcf.gz \
+      ~{prefix}.vcf.gz
   >>>
 
   output {
