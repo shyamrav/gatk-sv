@@ -56,6 +56,7 @@ workflow VcfClusterSingleChrom {
     RuntimeAttr? runtime_override_concat_svtypes
     RuntimeAttr? runtime_override_concat_sharded_cluster
     RuntimeAttr? runtime_override_make_sites_only
+    RuntimeAttr? runtime_override_sort_merged_vcf
 
     RuntimeAttr? runtime_override_preconcat_sharded_cluster
     RuntimeAttr? runtime_override_hail_merge_sharded_cluster
@@ -144,6 +145,7 @@ workflow VcfClusterSingleChrom {
       runtime_override_concat_svtypes=runtime_override_concat_svtypes,
       runtime_override_concat_sharded_cluster=runtime_override_concat_sharded_cluster,
       runtime_override_make_sites_only=runtime_override_make_sites_only,
+      runtime_override_sort_merged_vcf=runtime_override_sort_merged_vcf,
       runtime_override_preconcat_sharded_cluster=runtime_override_preconcat_sharded_cluster,
       runtime_override_hail_merge_sharded_cluster=runtime_override_hail_merge_sharded_cluster,
       runtime_override_fix_header_sharded_cluster=runtime_override_fix_header_sharded_cluster

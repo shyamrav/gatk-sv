@@ -132,7 +132,7 @@ task SortVcf {
 
   RuntimeAttr runtime_default = object {
                                   mem_gb: 3.75,
-                                  disk_gb: ceil(10.0 +  size(vcf, "GB") * 20),
+                                  disk_gb: ceil(10.0 +  size(vcf, "GB") * 40),
                                   cpu_cores: 1,
                                   preemptible_tries: 3,
                                   max_retries: 1,
