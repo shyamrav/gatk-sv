@@ -245,6 +245,7 @@ task ShardVcfCpx {
     svtk vcfcluster <(echo "sites_only.vcf.gz") ~{prefix}.vcf \
       -d ~{dist} \
       -f ~{frac} \
+      --single-end \
       -p candidate_complex_clusters \
       --svtypes DEL,DUP,INS,INV,BND \
       --ignore-svtypes \
