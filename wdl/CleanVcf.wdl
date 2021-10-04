@@ -47,6 +47,7 @@ workflow CleanVcf {
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
     RuntimeAttr? runtime_override_split_vcf_to_clean
+    RuntimeAttr? runtime_override_sort_1b
     RuntimeAttr? runtime_override_combine_step_1_sex_chr_revisions
     RuntimeAttr? runtime_override_split_include_list
     RuntimeAttr? runtime_override_combine_clean_vcf_2
@@ -99,6 +100,7 @@ workflow CleanVcf {
         runtime_override_final_cleanup=runtime_override_final_cleanup,
         runtime_override_split_vcf_to_clean=runtime_override_split_vcf_to_clean,
         runtime_override_combine_step_1_sex_chr_revisions=runtime_override_combine_step_1_sex_chr_revisions,
+        runtime_override_sort_1b=runtime_override_sort_1b,
         runtime_override_split_include_list=runtime_override_split_include_list,
         runtime_override_combine_clean_vcf_2=runtime_override_combine_clean_vcf_2,
         runtime_override_combine_revised_4=runtime_override_combine_revised_4,

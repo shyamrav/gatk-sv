@@ -54,6 +54,7 @@ workflow CleanVcfChromosome {
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_split_vcf_to_clean
     RuntimeAttr? runtime_override_combine_step_1_sex_chr_revisions
+    RuntimeAttr? runtime_override_sort_1b
     RuntimeAttr? runtime_override_split_include_list
     RuntimeAttr? runtime_override_combine_clean_vcf_2
     RuntimeAttr? runtime_override_combine_revised_4
@@ -115,6 +116,14 @@ workflow CleanVcfChromosome {
       runtime_attr_override=runtime_override_clean_vcf_1b
   }
 
+  call MiniTasks.SortVcf as Sort1b {
+    input:
+      vcf = CleanVcf1b.normal,
+      outfile_prefix = "~{prefix}.normal.revise.sorted.vcf.gz",
+      sv_base_mini_docker = sv_base_mini_docker,
+      runtime_attr_override = runtime_override_sort_1b
+  }
+
   call MiniTasks.SplitUncompressed as SplitIncludeList {
     input:
       whole_file=CleanVcf1a.include_list[0],
@@ -127,11 +136,10 @@ workflow CleanVcfChromosome {
   scatter ( i in range(length(SplitIncludeList.shards)) ){
     call CleanVcf2 {
       input:
-        normal_revise_vcf=CleanVcf1b.normal,
+        normal_revise_vcf=Sort1b.out,
         prefix="~{prefix}.clean_vcf_2.shard_~{i}",
         include_list=SplitIncludeList.shards[i],
         multi_cnvs=CleanVcf1b.multi,
-        vcftools_idx=CleanVcf1b.vcftools_idx,
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_clean_vcf_2
       }
@@ -157,7 +165,7 @@ workflow CleanVcfChromosome {
     call CleanVcf4 {
       input:
         rd_cn_revise=CleanVcf3.shards[i],
-        normal_revise_vcf=CleanVcf1b.normal,
+        normal_revise_vcf=Sort1b.out,
         prefix="~{prefix}.clean_vcf_4.shard_~{i}",
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_clean_vcf_4
@@ -183,7 +191,7 @@ workflow CleanVcfChromosome {
   call c5.CleanVcf5 {
     input:
       revise_vcf_lines=CombineRevised4.outfile,
-      normal_revise_vcf=CleanVcf1b.normal,
+      normal_revise_vcf=Sort1b.out,
       ped_file=ped_file,
       sex_chr_revise=CombineStep1SexChrRevisions.outfile,
       multi_ids=CombineMultiIds4.outfile,
@@ -339,17 +347,15 @@ task CleanVcf1b {
   }
 
   command <<<
-    set -euo pipefail
+    set -euxo pipefail
     python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf}
+    mv normal.revise.unsorted.vcf.gz ~{prefix}.normal.revise.unsorted.vcf.gz
     mv multi.cnvs.txt ~{prefix}.multi.cnvs.txt
-    mv normal.revise.vcf.gz ~{prefix}.normal.revise.vcf.gz
-    mv normal.revise.vcf.gz.csi ~{prefix}.normal.revise.vcf.gz.csi
   >>>
 
   output {
     File multi = "~{prefix}.multi.cnvs.txt"
     File normal = "~{prefix}.normal.revise.vcf.gz"
-    File vcftools_idx = "~{prefix}.normal.revise.vcf.gz.csi"
   }
 }
 
@@ -359,14 +365,13 @@ task CleanVcf2 {
     String prefix
     File include_list
     File multi_cnvs
-    File vcftools_idx
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
-  Float input_size = size([normal_revise_vcf, include_list, multi_cnvs, vcftools_idx], "GB")
+  Float input_size = size([normal_revise_vcf, include_list, multi_cnvs], "GB")
   Float base_disk_gb = 10.0
   Float base_mem_gb = 4.0
   Float input_mem_scale = 3.0
@@ -393,6 +398,7 @@ task CleanVcf2 {
   command <<<
     set -eu -o pipefail
 
+    bcftools index ~{normal_revise_vcf}
     /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part2.sh \
       ~{normal_revise_vcf} \
       ~{include_list} \
