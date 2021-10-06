@@ -116,14 +116,6 @@ workflow CleanVcfChromosome {
       runtime_attr_override=runtime_override_clean_vcf_1b
   }
 
-  call MiniTasks.SortVcf as Sort1b {
-    input:
-      vcf = CleanVcf1b.normal,
-      outfile_prefix = "~{prefix}.normal.revise.sorted.vcf.gz",
-      sv_base_mini_docker = sv_base_mini_docker,
-      runtime_attr_override = runtime_override_sort_1b
-  }
-
   call MiniTasks.SplitUncompressed as SplitIncludeList {
     input:
       whole_file=CleanVcf1a.include_list[0],
@@ -136,7 +128,7 @@ workflow CleanVcfChromosome {
   scatter ( i in range(length(SplitIncludeList.shards)) ){
     call CleanVcf2 {
       input:
-        normal_revise_vcf=Sort1b.out,
+        normal_revise_vcf=CleanVcf1b.normal,
         prefix="~{prefix}.clean_vcf_2.shard_~{i}",
         include_list=SplitIncludeList.shards[i],
         multi_cnvs=CleanVcf1b.multi,
@@ -165,7 +157,7 @@ workflow CleanVcfChromosome {
     call CleanVcf4 {
       input:
         rd_cn_revise=CleanVcf3.shards[i],
-        normal_revise_vcf=Sort1b.out,
+        normal_revise_vcf=CleanVcf1b.normal,
         prefix="~{prefix}.clean_vcf_4.shard_~{i}",
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_clean_vcf_4
@@ -191,7 +183,7 @@ workflow CleanVcfChromosome {
   call c5.CleanVcf5 {
     input:
       revise_vcf_lines=CombineRevised4.outfile,
-      normal_revise_vcf=Sort1b.out,
+      normal_revise_vcf=CleanVcf1b.normal,
       ped_file=ped_file,
       sex_chr_revise=CombineStep1SexChrRevisions.outfile,
       multi_ids=CombineMultiIds4.outfile,
@@ -349,7 +341,7 @@ task CleanVcf1b {
   command <<<
     set -euxo pipefail
     python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf}
-    mv normal.revise.unsorted.vcf.gz ~{prefix}.normal.revise.unsorted.vcf.gz
+    mv normal.revise.vcf.gz ~{prefix}.normal.revise.vcf.gz
     mv multi.cnvs.txt ~{prefix}.multi.cnvs.txt
   >>>
 
