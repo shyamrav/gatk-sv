@@ -9,7 +9,7 @@ import pysam
 import svtk.utils as svu
 import sys
 from pathlib import Path
-from subprocess import check_call, Popen, PIPE, STDOUT
+from subprocess import check_call
 
 
 SVTYPE = "SVTYPE"
@@ -182,7 +182,7 @@ def ensure_file(filename):
 
 
 def main(int_vcf_gz):
-    revised_vcf_filename = ensure_file("normal.revise.unsorted.vcf.gz")
+    revised_vcf_filename = ensure_file("normal.revise.vcf.gz")
     multi_cnvs_filename = ensure_file("multi.cnvs.txt")
 
     reviser = VCFReviser()
