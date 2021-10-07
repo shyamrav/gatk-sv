@@ -321,7 +321,7 @@ task CleanVcf1b {
   Float input_size = size(intermediate_vcf, "GB")
   RuntimeAttr runtime_default = object {
                                   mem_gb: 3.75,
-                                  disk_gb: ceil(10.0 + input_size * 3),
+                                  disk_gb: ceil(10.0 + input_size * 10),
                                   cpu_cores: 1,
                                   preemptible_tries: 3,
                                   max_retries: 1,
@@ -340,8 +340,9 @@ task CleanVcf1b {
 
   command <<<
     set -euxo pipefail
-    python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf}
-    mv normal.revise.vcf.gz ~{prefix}.normal.revise.vcf.gz
+    python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf} \
+      | bgzip \
+      > ~{prefix}.normal.revise.vcf.gz
     mv multi.cnvs.txt ~{prefix}.multi.cnvs.txt
   >>>
 

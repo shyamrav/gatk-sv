@@ -141,14 +141,13 @@ class VCFReviser:
 
         return geno_normal_revise_dict
 
-    def modify_variants(self, int_vcf_gz, revised_vcf, multi_cnvs):
+    def modify_variants(self, int_vcf_gz, multi_cnvs):
         geno_normal_revise_dict = self.get_geno_normal_revise(int_vcf_gz)
 
         with pysam.VariantFile(int_vcf_gz, "r") as f_in:
             header = f_in.header
-
-            with pysam.VariantFile(revised_vcf, "w", header=header) as f_out, \
-                    open(multi_cnvs, "w") as multi_cnvs_f:
+            sys.stdout.write(str(header))
+            with open(multi_cnvs, "w") as multi_cnvs_f:
                 variants = f_in.fetch()
                 for variant in variants:
                     if variant.id in geno_normal_revise_dict:
@@ -169,7 +168,7 @@ class VCFReviser:
                                     multi_cnvs_f.write(variant.id + "\n")
                                     break
 
-                    f_out.write(variant)
+                    sys.stdout.write(str(variant))
 
 
 def ensure_file(filename):
@@ -181,12 +180,11 @@ def ensure_file(filename):
 
 
 def main(int_vcf_gz):
-    revised_vcf_filename = ensure_file("normal.revise.vcf.gz")
     multi_cnvs_filename = ensure_file("multi.cnvs.txt")
 
     reviser = VCFReviser()
     reviser.modify_variants(
-        int_vcf_gz, revised_vcf_filename, multi_cnvs_filename)
+        int_vcf_gz, multi_cnvs_filename)
 
 
 if __name__ == '__main__':
