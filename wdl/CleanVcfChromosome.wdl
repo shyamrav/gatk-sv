@@ -321,7 +321,7 @@ task CleanVcf1b {
   Float input_size = size(intermediate_vcf, "GB")
   RuntimeAttr runtime_default = object {
                                   mem_gb: 3.75,
-                                  disk_gb: ceil(10.0 + input_size * 10),
+                                  disk_gb: ceil(10.0 + input_size * 50),
                                   cpu_cores: 1,
                                   preemptible_tries: 3,
                                   max_retries: 1,
