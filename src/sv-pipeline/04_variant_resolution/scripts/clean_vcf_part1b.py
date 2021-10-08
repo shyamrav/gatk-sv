@@ -28,11 +28,14 @@ class VariantFormatTypes:
 
 
 class VCFReviser:
-    def __init__(self):
+    def __init__(self, tmp_dir=None):
         self.rd_cn = {}
         self.ev = {}
         self.samples = {}
-        self.tmp_dir = os.path.abspath(os.path.expanduser("/tmp"))
+        if tmp_dir is None:
+            self.tmp_dir = os.path.abspath(os.path.expanduser("/tmp"))
+        else:
+            self.tmp_dir = tmp_dir
 
     def _update_rd_cn_ev(self, variant):
         rd_cn = []
@@ -181,13 +184,11 @@ def ensure_file(filename):
     return filename.name
 
 
-def main(int_vcf_gz):
+def main(args):
     multi_cnvs_filename = ensure_file("multi.cnvs.txt")
-
-    reviser = VCFReviser()
-    reviser.modify_variants(
-        int_vcf_gz, multi_cnvs_filename)
+    reviser = VCFReviser(tmp_dir=args[2])
+    reviser.modify_variants(args[1], multi_cnvs_filename)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv)
