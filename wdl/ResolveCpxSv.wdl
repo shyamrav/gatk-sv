@@ -286,7 +286,7 @@ task ResolvePrep {
   # bedtools merge, which should only need to keep a few records in memory at a time.
   RuntimeAttr runtime_default = object {
     mem_gb: 2.0,
-    disk_gb: ceil(20.0 + 10.0 * size(vcf, "GiB")),
+    disk_gb: ceil(20.0 + 50.0 * size(vcf, "GiB")),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
