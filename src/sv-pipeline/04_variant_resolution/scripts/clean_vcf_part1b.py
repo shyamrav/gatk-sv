@@ -4,15 +4,21 @@ within a real CNV
 """
 
 import os
+import logging
 import pybedtools
 import pysam
 import svtk.utils as svu
 import sys
 from pathlib import Path
+import string
 
+ALPHABET = string.ascii_uppercase + string.ascii_lowercase + \
+           string.digits
+ALPHABET_REVERSE = dict((c, i) for (i, c) in enumerate(ALPHABET))
+BASE = len(ALPHABET)
 
 SVTYPE = "SVTYPE"
-BLANK_SAMPLES = "Blank_Samples"
+BLANK_SAMPLES = "B"
 
 
 class SVType:
@@ -27,15 +33,28 @@ class VariantFormatTypes:
     EV = "EV"
 
 
+def num_encode(n):
+    s = []
+    while True:
+        n, r = divmod(n, BASE)
+        s.append(ALPHABET[r])
+        if n == 0: break
+    return ''.join(reversed(s))
+
+
+def num_decode(s):
+    n = 0
+    for c in s:
+        n = n * BASE + ALPHABET_REVERSE[c]
+    return n
+
+
 class VCFReviser:
-    def __init__(self, tmp_dir=None):
+    def __init__(self):
         self.rd_cn = {}
         self.ev = {}
-        self.samples = {}
-        if tmp_dir is None:
-            self.tmp_dir = os.path.abspath(os.path.expanduser("/tmp"))
-        else:
-            self.tmp_dir = tmp_dir
+        self.sample_indices_dict = {}
+        self.sample_list = []
 
     def _update_rd_cn_ev(self, variant):
         rd_cn = []
@@ -45,6 +64,9 @@ class VCFReviser:
             ev.append(v[VariantFormatTypes.EV])
         self.rd_cn[variant.id] = rd_cn
         self.ev[variant.id] = ev
+
+    def set_temp_dir(self, dir):
+        self.tmp_dir = dir
 
     def filter_variant_types(self, variants, filter_types=None,
                              min_width=5000):
@@ -57,7 +79,7 @@ class VCFReviser:
 
             self._update_rd_cn_ev(variant)
 
-            samples = ','.join(svu.get_called_samples(variant))
+            samples = ','.join([num_encode(self.sample_indices_dict[s]) for s in svu.get_called_samples(variant)])
             if len(samples) == 0:
                 samples = BLANK_SAMPLES
 
@@ -91,16 +113,20 @@ class VCFReviser:
             i = -1
             for sample in header.samples:
                 i += 1
-                self.samples[sample] = i
+                self.sample_indices_dict[sample] = i
+                self.sample_list.append(sample)
 
             pybedtools.set_tempdir(self.tmp_dir)
+            logging.info('Filtering variant types')
             dels_and_dups = pybedtools.BedTool(
                 self.filter_variant_types(
                     f.fetch(), [SVType.DEL, SVType.DUP], 5000)).saveas()
 
+            logging.info('Running intersect')
             overlapping_variants = dels_and_dups.intersect(
                 dels_and_dups, wa=True, wb=True)
 
+            logging.info("Filtering intersect results")
             for interval in overlapping_variants.intervals:
                 # IDs are identical, hence it is the overlap
                 # of an interval with itself.
@@ -114,21 +140,23 @@ class VCFReviser:
                 wider, narrower = self.get_wider(interval.fields)
                 if wider[5] == BLANK_SAMPLES:
                     continue
-                non_common_samples = []
-                for x in wider[5].split(","):
-                    if x not in narrower[5].split(","):
-                        non_common_samples.append(x)
 
                 coverage = self.get_coverage(wider, narrower)
                 if coverage >= 0.5:
+                    wider_samples = set(wider[5].split(","))
+                    narrower_samples = set(narrower[5].split(","))
+                    non_common_samples = wider_samples - narrower_samples
                     for x in non_common_samples:
                         overlap_test_text[f"{narrower[3]}@{x}"] = \
                             [f"{narrower[3]}@{x}", wider[3], wider[4]]
 
+
+
+        logging.info('Generating geno_normal_revise_dict')
         geno_normal_revise_dict = {}
         for k, v in overlap_test_text.items():
             var_id = k.split("@")[0]
-            sample_index = self.samples[k.split("@")[1]]
+            sample_index = num_decode(k.split("@")[1])
             new_val = None
             if v[2] == SVType.DUP and \
                     self.rd_cn[var_id][sample_index] == 2 and \
@@ -142,13 +170,15 @@ class VCFReviser:
             if new_val:
                 if var_id not in geno_normal_revise_dict:
                     geno_normal_revise_dict[var_id] = {}
-                geno_normal_revise_dict[var_id][v[0].split("@")[1]] = new_val
+                sample_id = self.sample_list[sample_index]
+                geno_normal_revise_dict[var_id][sample_id] = new_val
 
         return geno_normal_revise_dict
 
     def modify_variants(self, int_vcf_gz, multi_cnvs):
         geno_normal_revise_dict = self.get_geno_normal_revise(int_vcf_gz)
 
+        logging.info('Filtering variants')
         with pysam.VariantFile(int_vcf_gz, "r") as f_in:
             header = f_in.header
             sys.stdout.write(str(header))
@@ -185,9 +215,13 @@ def ensure_file(filename):
 
 
 def main(args):
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    logging.info('Starting script')
     multi_cnvs_filename = ensure_file("multi.cnvs.txt")
-    reviser = VCFReviser(tmp_dir=args[2])
+    reviser = VCFReviser()
+    reviser.set_temp_dir(args[2])
     reviser.modify_variants(args[1], multi_cnvs_filename)
+    logging.info('Done')
 
 
 if __name__ == '__main__':
