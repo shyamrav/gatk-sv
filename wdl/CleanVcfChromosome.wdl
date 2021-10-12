@@ -340,7 +340,8 @@ task CleanVcf1b {
 
   command <<<
     set -euxo pipefail
-    python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf} \
+    mkdir tmp
+    python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf} tmp \
       | bgzip \
       > ~{prefix}.normal.revise.vcf.gz
     mv multi.cnvs.txt ~{prefix}.multi.cnvs.txt
