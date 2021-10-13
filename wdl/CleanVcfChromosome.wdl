@@ -2,6 +2,7 @@ version 1.0
 
 import "Structs.wdl"
 import "TasksMakeCohortVcf.wdl" as MiniTasks
+import "CleanVcf1b.wdl" as c1b
 import "CleanVcf5.wdl" as c5
 import "HailMerge.wdl" as HailMerge
 
@@ -17,6 +18,7 @@ workflow CleanVcfChromosome {
     File bothsides_pass_list
     Int min_records_per_shard_step1
     Int samples_per_step2_shard
+    Int clean_vcf1b_records_per_shard
     Int clean_vcf5_records_per_shard
     Int? clean_vcf5_threads_per_task
     File? outlier_samples_list
@@ -32,7 +34,6 @@ workflow CleanVcfChromosome {
 
     # overrides for local tasks
     RuntimeAttr? runtime_override_clean_vcf_1a
-    RuntimeAttr? runtime_override_clean_vcf_1b
     RuntimeAttr? runtime_override_clean_vcf_2
     RuntimeAttr? runtime_override_clean_vcf_3
     RuntimeAttr? runtime_override_clean_vcf_4
@@ -42,6 +43,16 @@ workflow CleanVcfChromosome {
     RuntimeAttr? runtime_override_clean_vcf_5_polish
     RuntimeAttr? runtime_override_stitch_fragmented_cnvs
     RuntimeAttr? runtime_override_final_cleanup
+
+    # Clean vcf 1b
+    RuntimeAttr? runtime_attr_override_subset_large_cnvs_1b
+    RuntimeAttr? runtime_attr_override_sort_bed_1b
+    RuntimeAttr? runtime_attr_override_intersect_bed_1b
+    RuntimeAttr? runtime_attr_override_build_dict_1b
+    RuntimeAttr? runtime_attr_override_scatter_1b
+    RuntimeAttr? runtime_attr_override_filter_vcf_1b
+    RuntimeAttr? runtime_override_concat_vcfs_1b
+    RuntimeAttr? runtime_override_cat_multi_cnvs_1b
 
     RuntimeAttr? runtime_override_preconcat_step1
     RuntimeAttr? runtime_override_hail_merge_step1
@@ -54,7 +65,6 @@ workflow CleanVcfChromosome {
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_split_vcf_to_clean
     RuntimeAttr? runtime_override_combine_step_1_sex_chr_revisions
-    RuntimeAttr? runtime_override_sort_1b
     RuntimeAttr? runtime_override_split_include_list
     RuntimeAttr? runtime_override_combine_clean_vcf_2
     RuntimeAttr? runtime_override_combine_revised_4
@@ -108,12 +118,22 @@ workflow CleanVcfChromosome {
       runtime_attr_override=runtime_override_combine_step_1_sex_chr_revisions
   }
 
-  call CleanVcf1b {
+  call c1b.CleanVcf1b {
     input:
       intermediate_vcf=CombineStep1Vcfs.merged_vcf,
       prefix="~{prefix}.clean_vcf_1b",
+      records_per_shard=clean_vcf1b_records_per_shard,
       sv_pipeline_docker=sv_pipeline_docker,
-      runtime_attr_override=runtime_override_clean_vcf_1b
+      sv_pipeline_updates_docker=sv_pipeline_updates_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
+      runtime_attr_override_subset_large_cnvs=runtime_attr_override_subset_large_cnvs_1b,
+      runtime_attr_override_sort_bed=runtime_attr_override_sort_bed_1b,
+      runtime_attr_override_intersect_bed=runtime_attr_override_intersect_bed_1b,
+      runtime_attr_override_build_dict=runtime_attr_override_build_dict_1b,
+      runtime_attr_override_scatter=runtime_attr_override_scatter_1b,
+      runtime_attr_override_filter_vcf=runtime_attr_override_filter_vcf_1b,
+      runtime_override_concat_vcfs=runtime_override_concat_vcfs_1b,
+      runtime_override_cat_multi_cnvs=runtime_override_cat_multi_cnvs_1b
   }
 
   call MiniTasks.SplitUncompressed as SplitIncludeList {
@@ -312,6 +332,7 @@ task CleanVcf1a {
 
 task CleanVcf1b {
   input {
+    File script = "gs://broad-dsde-methods-markw/gnomad/clean_vcf_part1b.py"
     File intermediate_vcf
     String prefix
     String sv_pipeline_docker
@@ -341,7 +362,7 @@ task CleanVcf1b {
   command <<<
     set -euxo pipefail
     mkdir tmp
-    python /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py ~{intermediate_vcf} tmp \
+    python ~{select_first([script, "/opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1b.py"])} ~{intermediate_vcf} tmp \
       | bgzip \
       > ~{prefix}.normal.revise.vcf.gz
     mv multi.cnvs.txt ~{prefix}.multi.cnvs.txt
