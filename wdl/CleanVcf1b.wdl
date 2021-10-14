@@ -91,7 +91,7 @@ workflow CleanVcf1b {
             naive=true,
             sort_vcf_list=true,
             outfile_prefix="~{prefix}.concat_vcfs",
-            sv_base_mini_docker=sv_base_mini_docker,
+            sv_base_mini_docker=sv_pipeline_updates_docker,
             runtime_attr_override=runtime_override_concat_vcfs
     }
 
