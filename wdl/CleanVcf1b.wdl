@@ -22,7 +22,6 @@ workflow CleanVcf1b {
         RuntimeAttr? runtime_attr_override_filter_vcf
         RuntimeAttr? runtime_override_concat_vcfs
         RuntimeAttr? runtime_override_cat_multi_cnvs
-        RuntimeAttr? runtime_attr_override_sort_shard
     }
 
     call SubsetLargeCNVs {
@@ -84,18 +83,11 @@ workflow CleanVcf1b {
                 sv_pipeline_docker=sv_pipeline_docker,
                 runtime_attr_override=runtime_attr_override_filter_vcf
         }
-        call MiniTasks.SortVcf as SortFilteredShard {
-            input:
-                vcf=FilterVcf.out,
-                outfile_prefix="~{prefix}.filter_vcf.shard_~{i}.sorted",
-                sv_base_mini_docker=sv_base_mini_docker,
-                runtime_attr_override=runtime_attr_override_sort_shard
-        }
     }
 
     call MiniTasks.ConcatVcfs as ConcatCleanVcf1bShards {
         input:
-            vcfs=SortFilteredShard.out,
+            vcfs=FilterVcf.out,
             naive=true,
             sort_vcf_list=true,
             outfile_prefix="~{prefix}.concat_vcfs",

@@ -64,7 +64,6 @@ workflow CleanVcf {
     RuntimeAttr? runtime_attr_override_filter_vcf_1b
     RuntimeAttr? runtime_override_concat_vcfs_1b
     RuntimeAttr? runtime_override_cat_multi_cnvs_1b
-    RuntimeAttr? runtime_attr_override_sort_shard_1b
 
     RuntimeAttr? runtime_override_preconcat_step1
     RuntimeAttr? runtime_override_hail_merge_step1
@@ -130,8 +129,7 @@ workflow CleanVcf {
         runtime_attr_override_scatter_1b=runtime_attr_override_scatter_1b,
         runtime_attr_override_filter_vcf_1b=runtime_attr_override_filter_vcf_1b,
         runtime_override_concat_vcfs_1b=runtime_override_concat_vcfs_1b,
-        runtime_override_cat_multi_cnvs_1b=runtime_override_cat_multi_cnvs_1b,
-        runtime_attr_override_sort_shard_1b=runtime_attr_override_sort_shard_1b
+        runtime_override_cat_multi_cnvs_1b=runtime_override_cat_multi_cnvs_1b
     }
   }
 
