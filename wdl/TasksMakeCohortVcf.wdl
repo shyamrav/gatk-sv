@@ -177,6 +177,7 @@ task ConcatVcfs {
     Boolean naive = false
     Boolean generate_index = true
     Boolean sites_only = false
+    Boolean sort_vcf_list = false
     String? outfile_prefix
     String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
@@ -213,7 +214,12 @@ task ConcatVcfs {
   command <<<
     set -euo pipefail
     VCFS="~{write_lines(vcfs)}"
-    bcftools concat --no-version ~{allow_overlaps_flag} ~{naive_flag} -O~{concat_output_type} --file-list ${VCFS} \
+    if ~{sort_vcf_list}; then
+      cat $VCFS | awk -F '/' '{print $NF"\t"$0}' | sort -k1,1V | awk '{print $2}' > vcfs.list
+    else
+      cp $VCFS vcfs.list
+    fi
+    bcftools concat --no-version ~{allow_overlaps_flag} ~{naive_flag} -O~{concat_output_type} --file-list vcfs.list \
       ~{sites_only_command} \
       > ~{outfile_name}
     ~{generate_index_command}
