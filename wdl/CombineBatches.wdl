@@ -1,5 +1,6 @@
 version 1.0
 
+import "CombineSRBothsidePass.wdl" as CombineSRBothsidePass
 import "VcfClusterSingleChromsome.wdl" as VcfClusterContig
 import "TasksMakeCohortVcf.wdl" as MiniTasks
 import "HailMerge.wdl" as HailMerge
@@ -41,7 +42,8 @@ workflow CombineBatches {
     RuntimeAttr? runtime_override_pull_header
 
     # overrides for mini tasks
-    RuntimeAttr? runtime_override_clean_bothside_pass
+    RuntimeAttr? runtime_attr_get_non_ref_vids
+    RuntimeAttr? runtime_attr_calculate_support_frac
     RuntimeAttr? runtime_override_clean_background_fail
     RuntimeAttr? runtime_override_concat
     RuntimeAttr? runtime_override_concat_pesr_depth
@@ -87,14 +89,14 @@ workflow CombineBatches {
   }
 
   # Preprocess some inputs
-  Int num_pass_lines=length(raw_sr_bothside_pass_files)
-  call MiniTasks.CatUncompressedFiles as CleanBothsidePass {
+  call CombineSRBothsidePass.CombineSRBothsidePass {
     input:
-      shards=raw_sr_bothside_pass_files,
-      filter_command="sort | uniq -c | awk -v OFS='\\t' '{print $1/~{num_pass_lines}, $2}'",
-      outfile_name="cohort_sr_genotyping_bothside_pass_list.txt",
+      pesr_vcfs=pesr_vcfs,
+      raw_sr_bothside_pass_files=raw_sr_bothside_pass_files,
+      prefix="~{cohort_name}.sr_bothside_pass",
       sv_base_mini_docker=sv_base_mini_docker,
-      runtime_attr_override=runtime_override_clean_bothside_pass
+      runtime_attr_get_non_ref_vids=runtime_attr_get_non_ref_vids,
+      runtime_attr_calculate_support_frac=runtime_attr_calculate_support_frac
   }
 
   Float min_background_fail_first_col = min_sr_background_fail_batches * length(raw_sr_background_fail_files)
@@ -102,7 +104,7 @@ workflow CombineBatches {
     input:
       shards=raw_sr_background_fail_files,
       filter_command="sort | uniq -c | awk -v OFS='\\t' '{if($1 >= ~{min_background_fail_first_col}) print $2}'",
-      outfile_name="cohort_sr_genotyping_background_fail_list.txt",
+      outfile_name="~{cohort_name}.background_fail.txt",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_override_clean_background_fail
   }
@@ -138,7 +140,7 @@ workflow CombineBatches {
         cohort_name=cohort_name,
         localize_shard_size=localize_shard_size,
         subset_sr_lists=true,
-        bothside_pass=CleanBothsidePass.outfile,
+        bothside_pass=CombineSRBothsidePass.out,
         background_fail=CleanBackgroundFail.outfile,
         empty_file=empty_file,
         hail_script=hail_script,
@@ -185,7 +187,7 @@ workflow CombineBatches {
         cohort_name=cohort_name,
         localize_shard_size=localize_shard_size,
         subset_sr_lists=false,
-        bothside_pass=CleanBothsidePass.outfile,
+        bothside_pass=CombineSRBothsidePass.out,
         background_fail=CleanBackgroundFail.outfile,
         empty_file=empty_file,
         hail_script=hail_script,

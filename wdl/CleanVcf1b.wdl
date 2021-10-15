@@ -68,8 +68,8 @@ workflow CleanVcf1b {
     call CleanVcf5.ScatterVcf {
         input:
             vcf=intermediate_vcf,
-            records_per_shard = records_per_shard,
-            shard_prefix = "~{prefix}.scatter_vcf",
+            records_per_shard=records_per_shard,
+            prefix="~{prefix}.scatter_vcf",
             sv_pipeline_docker=sv_pipeline_updates_docker,
             runtime_attr_override=runtime_attr_override_scatter
     }
@@ -121,7 +121,7 @@ task SubsetLargeCNVs {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 2.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10
@@ -162,7 +162,7 @@ task Vcf2Bed {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 2.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10
@@ -202,7 +202,7 @@ task SortBed {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 10.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10
@@ -243,7 +243,7 @@ task BedtoolsIntersect {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 10.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10
@@ -284,7 +284,7 @@ task BuildGenoNormalReviseDictionary {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 2.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10
@@ -324,7 +324,7 @@ task FilterVcf {
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 2.0),
-                                      cpu_cores: 4,
+                                      cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
                                       boot_disk_gb: 10

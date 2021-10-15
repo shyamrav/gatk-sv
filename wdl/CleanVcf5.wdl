@@ -32,7 +32,7 @@ workflow CleanVcf5 {
         input:
             vcf=normal_revise_vcf,
             records_per_shard = records_per_shard,
-            shard_prefix = "~{prefix}.scatter_vcf",
+            prefix = "~{prefix}.scatter_vcf",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_override_scatter
     }
@@ -80,7 +80,7 @@ workflow CleanVcf5 {
 task ScatterVcf {
     input {
         File vcf
-        String shard_prefix
+        String prefix
         Int records_per_shard
         Int? threads = 2
         String sv_pipeline_docker
@@ -112,11 +112,20 @@ task ScatterVcf {
     command <<<
         set -eu -o pipefail
         # in case the file is empty create an empty shard
-        bcftools view -h ~{vcf} | bgzip -c > ~{shard_prefix}.0.vcf.gz
-        bcftools +scatter ~{vcf} -o . -O z -p ~{shard_prefix}. --threads ~{threads} -n ~{records_per_shard}
+        bcftools view -h ~{vcf} | bgzip -c > ~{prefix}.0.vcf.gz
+        bcftools +scatter ~{vcf} -o . -O z -p ~{prefix}. --threads ~{threads} -n ~{records_per_shard}
+
+        ls ~{prefix}.*.vcf.gz | sort -k1,1V > vcfs.list
+        i=0
+        while read vcf; do
+            shard_no=`printf %06d $i`
+            mv ${vcf} ~{prefix}.shard_${shard_no}.vcf.gz
+            i=$((i+1))
+        done < vcfs.list
+
     >>>
     output {
-        Array[File] shards = glob("~{shard_prefix}.*.vcf.gz")
+        Array[File] shards = glob("~{prefix}.shard_*.vcf.gz")
     }
 }
 
