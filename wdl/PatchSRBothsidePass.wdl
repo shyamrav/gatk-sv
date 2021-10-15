@@ -2,11 +2,12 @@ version 1.0
 
 import "Structs.wdl"
 
-workflow CombineSRBothsidePass {
+workflow PatchSRBothsidePass {
     input {
-        Array[File] pesr_vcfs
-        Array[File] raw_sr_bothside_pass_files
-        String prefix
+        Array[File] batch_vcfs
+        File cohort_vcf
+        File updated_bothside_pass_list
+        String cohort_name
 
         String sv_base_mini_docker
         String sv_pipeline_docker
@@ -15,42 +16,46 @@ workflow CombineSRBothsidePass {
         RuntimeAttr? runtime_attr_calculate_support_frac
     }
 
-    scatter (i in range(length(pesr_vcfs))) {
+    scatter (i in range(length(batch_vcfs))) {
         call GetNonRefVariantLists {
             input:
-                vcf=pesr_vcfs[i],
-                prefix="~{prefix}.non_ref_vids.shard_~{i}",
+                batch_vcf=batch_vcfs[i],
+                cohort_vcf=cohort_vcf,
+                prefix="~{cohort_name}.non_ref_variants.shard_~{i}",
                 sv_base_mini_docker=sv_base_mini_docker,
                 runtime_attr_override=runtime_attr_get_non_ref_vids
         }
     }
 
-    call CalculateBothsideSupportFraction {
+    Int num_batches = length(batch_vcfs)
+    call RecalculateBothsideSupportFractions {
         input:
             non_ref_vid_lists=GetNonRefVariantLists.out,
-            raw_sr_bothside_pass_files=raw_sr_bothside_pass_files,
-            prefix="~{prefix}.sr_bothside_support",
+            updated_bothside_pass_list=updated_bothside_pass_list,
+            num_batches=num_batches,
+            prefix="~{cohort_name}.sr_bothside_support.patched",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_calculate_support_frac
     }
 
     output {
-        File out = CalculateBothsideSupportFraction.out
+        File out = RecalculateBothsideSupportFractions.out
     }
 }
 
 task GetNonRefVariantLists {
     input {
-        File vcf
+        File batch_vcf
+        File cohort_vcf
         String prefix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
     }
 
-    Float input_size = size(vcf, "GB")
+    Float input_size = size([batch_vcf, cohort_vcf], "GB")
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
-                                      disk_gb: ceil(10.0 + input_size * 2.0),
+                                      disk_gb: ceil(10.0 + input_size),
                                       cpu_cores: 1,
                                       preemptible_tries: 3,
                                       max_retries: 1,
@@ -69,7 +74,10 @@ task GetNonRefVariantLists {
 
     command <<<
         set -euo pipefail
-        bcftools view -G -i 'SUM(AC)>0||SUM(FORMAT/SR_GT)>0' ~{vcf} | bcftools query -f '%ID\n' \
+        bcftools query -l ~{batch_vcf} > samples.list
+        bcftools view --samples-file samples.list ~{cohort_vcf} \
+            | bcftools view -G -i 'SUM(AC)>0||SUM(FORMAT/SR_GT)>0' \
+            | bcftools query -f '%ID\n' \
             > ~{prefix}.list
     >>>
     output {
@@ -78,16 +86,17 @@ task GetNonRefVariantLists {
 }
 
 
-task CalculateBothsideSupportFraction {
+task RecalculateBothsideSupportFractions {
     input {
         Array[File] non_ref_vid_lists
-        Array[File] raw_sr_bothside_pass_files
+        File updated_bothside_pass_list
+        Int num_batches
         String prefix
         String sv_pipeline_docker
         RuntimeAttr? runtime_attr_override
     }
 
-    Float input_size = size(non_ref_vid_lists, "GB") + size(raw_sr_bothside_pass_files, "GB")
+    Float input_size = size(non_ref_vid_lists, "GB") + size(updated_bothside_pass_list, "GB")
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size * 2.0),
@@ -109,9 +118,11 @@ task CalculateBothsideSupportFraction {
 
     command <<<
         set -euo pipefail
-        python /opt/sv-pipeline/04_variant_resolution/scripts/calculate_sr_bothside_support.py \
+
+        python /opt/sv-pipeline/04_variant_resolution/scripts/patch_sr_bothside_support.py \
             ~{write_lines(non_ref_vid_lists)} \
-            ~{write_lines(raw_sr_bothside_pass_files)} \
+            ~{updated_bothside_pass_list} \
+            ~{num_batches} \
             > ~{prefix}.txt
     >>>
     output {

@@ -3,8 +3,9 @@
 import sys
 from collections import defaultdict
 
+
 def count_vids(list_path):
-	counts = defaultdict(lambda : 0)
+	counts = defaultdict(lambda: 0)
 	with open(list_path, 'r') as f_list:
 		for path in f_list:
 			with open(path.strip(), 'r') as f:
@@ -12,8 +13,9 @@ def count_vids(list_path):
 					counts[vid.strip()] += 1
 	return counts
 
-NON_REF_VIDS_LIST=sys.argv[1]
-BOTHSIDE_PASS_LIST=sys.argv[2]
+
+NON_REF_VIDS_LIST = sys.argv[1]
+BOTHSIDE_PASS_LIST = sys.argv[2]
 
 non_ref_counts = count_vids(NON_REF_VIDS_LIST)
 bothside_pass_counts = count_vids(BOTHSIDE_PASS_LIST)
