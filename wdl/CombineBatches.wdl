@@ -95,6 +95,7 @@ workflow CombineBatches {
       raw_sr_bothside_pass_files=raw_sr_bothside_pass_files,
       prefix="~{cohort_name}.sr_bothside_pass",
       sv_base_mini_docker=sv_base_mini_docker,
+      sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_get_non_ref_vids=runtime_attr_get_non_ref_vids,
       runtime_attr_calculate_support_frac=runtime_attr_calculate_support_frac
   }
