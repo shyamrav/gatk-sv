@@ -16,7 +16,7 @@ def count_vids(list_path):
 
 def count_sr_pass(path, n):
     counts = defaultdict(lambda: 0)
-    with open(path.strip(), 'r') as f:
+    with open(path, 'r') as f:
         for line in f:
             tokens = line.strip().split('\t')
             n_support = round(float(tokens[0]) * n)
@@ -32,11 +32,15 @@ NUM_BATCHES = int(sys.argv[3])
 non_ref_counts = count_vids(NON_REF_VIDS_LIST)
 bothside_pass_counts = count_sr_pass(BOTHSIDE_PASS_FILE, NUM_BATCHES)
 
-for vid, bothside_pass_count in bothside_pass_counts.items():
-    if bothside_pass_count == 0:
-        continue
-    non_ref_count = non_ref_counts[vid]
-    if non_ref_count == 0:
-        continue
-    fraction_support = bothside_pass_count / float(non_ref_count)
-    sys.stdout.write("{}\t{}\n".format(fraction_support, vid))
+with open(BOTHSIDE_PASS_FILE, 'r') as f:
+    for line in f:
+        tokens = line.strip().split('\t')
+        vid = tokens[-1]
+        bothside_pass_count = bothside_pass_counts[vid]
+        if bothside_pass_count == 0:
+            continue
+        non_ref_count = non_ref_counts[vid]
+        if non_ref_count == 0:
+            continue
+        fraction_support = min(1., bothside_pass_count / float(non_ref_count))
+        sys.stdout.write("{}\t{}\n".format(fraction_support, "\t".join(tokens[1:])))

@@ -26,5 +26,5 @@ for vid, bothside_pass_count in bothside_pass_counts.items():
 	non_ref_count = non_ref_counts[vid]
 	if non_ref_count == 0:
 		continue
-	fraction_support = bothside_pass_count / float(non_ref_count)
+	fraction_support = min(1., bothside_pass_count / float(non_ref_count))
 	sys.stdout.write("{}\t{}\n".format(fraction_support, vid))

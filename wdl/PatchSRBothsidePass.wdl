@@ -9,6 +9,8 @@ workflow PatchSRBothsidePass {
         File updated_bothside_pass_list
         String cohort_name
 
+        File patch_script
+
         String sv_base_mini_docker
         String sv_pipeline_docker
 
@@ -30,6 +32,7 @@ workflow PatchSRBothsidePass {
     Int num_batches = length(batch_vcfs)
     call RecalculateBothsideSupportFractions {
         input:
+            patch_script=patch_script,
             non_ref_vid_lists=GetNonRefVariantLists.out,
             updated_bothside_pass_list=updated_bothside_pass_list,
             num_batches=num_batches,
@@ -88,6 +91,7 @@ task GetNonRefVariantLists {
 
 task RecalculateBothsideSupportFractions {
     input {
+        File patch_script
         Array[File] non_ref_vid_lists
         File updated_bothside_pass_list
         Int num_batches
@@ -118,8 +122,7 @@ task RecalculateBothsideSupportFractions {
 
     command <<<
         set -euo pipefail
-
-        python /opt/sv-pipeline/04_variant_resolution/scripts/patch_sr_bothside_support.py \
+        python ~{patch_script} \
             ~{write_lines(non_ref_vid_lists)} \
             ~{updated_bothside_pass_list} \
             ~{num_batches} \
