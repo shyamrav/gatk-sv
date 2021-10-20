@@ -247,17 +247,8 @@ class ComplexSV:
             is_mei = check_mei_overlap(self.vcf_record.chrom, source_start,
                                        source_end, self.mei_bed)
 
-            # then check for RdTest support
-            #  is_dup = check_rdtest(self.vcf_record, source_start, source_end,
-            #  self.rdtest)
-
             if is_mei:
                 self.cpx_type = 'MEI_' + self.cpx_type.split('/')[1]
-            #  elif is_dup:
-                #  self.svtype = 'CPX'
-                #  self.cpx_type = 'INV_DISPERSED_DUP'
-            #  else:
-                #  self.cpx_type = self.cpx_type.split('/')[1]
 
             self.vcf_record.pos = sink_start
             self.vcf_record.stop = sink_end
@@ -482,6 +473,8 @@ class ComplexSV:
                 record = self.insertions[0]
                 self.cpx_type = record.alts[0].strip('<>')
                 self.svtype = 'INS'
+                self.vcf_record.pos = record.pos
+                self.vcf_record.stop = record.stop
                 self.vcf_record.alts = record.alts
                 self.vcf_record.id = record.id
                 self.vcf_record.info['SVTYPE'] = self.svtype
@@ -492,6 +485,8 @@ class ComplexSV:
             record = self.insertions[0]
             self.cpx_type = record.alts[0].strip('<>')
             self.svtype = 'INS'
+            self.vcf_record.pos = record.pos
+            self.vcf_record.stop = record.stop
             self.vcf_record.id = record.id
             self.vcf_record.alts = record.alts
             self.vcf_record.info['SVTYPE'] = self.svtype
@@ -510,6 +505,8 @@ class ComplexSV:
                 and self.cnvs[0].info['SVTYPE'] == 'DUP':
             record = self.cnvs[0]
             self.svtype = 'DUP'
+            self.vcf_record.pos = record.pos
+            self.vcf_record.stop = record.stop
             self.vcf_record.id = record.id
             self.vcf_record.alts = record.alts
             self.vcf_record.info['SVTYPE'] = self.svtype
@@ -521,75 +518,13 @@ class ComplexSV:
         else:
             self.svtype = 'INS'
 
-        # if len(self.breakends) > 0 and len(self.cnvs) == 0:
-        #     record = self.insertions[0]
-        #     self.cpx_type = record.alts[0].strip('<>')
-        #     self.svtype = 'INS'
-        #     self.vcf_record.alts = record.alts
-        #     self.vcf_record.info['SVTYPE'] = self.svtype
-        #     self.vcf_record.info['CPX_TYPE'] = self.cpx_type
-        #     self.vcf_record.info['CHR2'] = record.info['CHR2']
-        #     self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-        # elif len(self.cnvs) == 1 and len(self.breakends) == 0:
-        #     if self.cnvs[0].info['SVTYPE'] == 'DUP':
-        #         record = self.cnvs[0]
-        #         self.svtype = 'DUP'
-        #         self.vcf_record.alts = record.alts
-        #         self.vcf_record.info['SVTYPE'] = self.svtype
-        #         self.vcf_record.info['CHR2'] = record.info['CHR2']
-        #         self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-        #     else:
-        #         self.set_unresolved()
-        # else:
-        #     self.set_unresolved()
-
     # Where Manta calls two insertions flanking a duplication, report just the dup
     def report_manta_tandem_dup(self):
         record = self.dups[0]
         self.cpx_type = record.alts[0].strip('<>')
         self.svtype = 'DUP'
-        self.vcf_record.alts = record.alts
-        self.vcf_record.info['SVTYPE'] = self.svtype
-        self.vcf_record.info['CPX_TYPE'] = self.cpx_type
-        self.vcf_record.info['CHR2'] = record.info['CHR2']
-        self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-
-    def report_single_ender(self):
-        # if cluster contains a single duplication, report that
-        # otherwise, report the first insertion record and discard all others
-        if len(self.cnvs) == 1:
-            if self.cnvs[0].info['SVTYPE'] == 'DUP':
-                record = self.cnvs[0]
-                self.svtype = 'DUP'
-                self.vcf_record.alts = record.alts
-                self.vcf_record.info['SVTYPE'] = self.svtype
-                self.vcf_record.info['CHR2'] = record.info['CHR2']
-                self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-            else:
-                record = self.insertions[0]
-                self.cpx_type = record.alts[0].strip('<>')
-                self.svtype = 'INS'
-                self.vcf_record.alts = record.alts
-                self.vcf_record.info['SVTYPE'] = self.svtype
-                self.vcf_record.info['CPX_TYPE'] = self.cpx_type
-                self.vcf_record.info['CHR2'] = record.info['CHR2']
-                self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-        else:
-            record = self.insertions[0]
-            self.cpx_type = record.alts[0].strip('<>')
-            self.svtype = 'INS'
-            self.vcf_record.alts = record.alts
-            self.vcf_record.info['SVTYPE'] = self.svtype
-            self.vcf_record.info['CPX_TYPE'] = self.cpx_type
-            self.vcf_record.info['CHR2'] = record.info['CHR2']
-            self.vcf_record.info['SVLEN'] = record.info['SVLEN']
-
-    # Where Manta calls two insertions flanking a duplication, report just the dup
-
-    def report_manta_tandem_dup(self):
-        record = self.dups[0]
-        self.cpx_type = record.alts[0].strip('<>')
-        self.svtype = 'DUP'
+        self.vcf_record.pos = record.pos
+        self.vcf_record.stop = record.stop
         self.vcf_record.alts = record.alts
         self.vcf_record.info['SVTYPE'] = self.svtype
         self.vcf_record.info['CPX_TYPE'] = self.cpx_type
@@ -753,19 +688,3 @@ def check_mei_overlap(chrom, start, end, mei_bed):
     cov = float(i.fields[6])
 
     return cov >= 0.5
-
-
-def check_rdtest(record, start, end, rdtest):
-    """
-    Check if putative insertion has depth support
-    """
-
-    rdtest_record = record.copy()
-    rdtest_record.pos = start
-    rdtest_record.stop = end
-    rdtest_record.info['SVTYPE'] = 'DUP'
-
-    if end - start < 1000:
-        return rdtest.test_record(rdtest_record, cutoff_type='pesr_lt1kb')
-    else:
-        return rdtest.test_record(rdtest_record, cutoff_type='pesr_gt1kb')
