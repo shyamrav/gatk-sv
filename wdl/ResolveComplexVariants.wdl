@@ -227,6 +227,8 @@ workflow ResolveComplexVariants {
     Array[File] complex_resolve_vcf_indexes = RenameVariants.renamed_vcf_index
     Array[File] complex_resolve_bothside_pass_lists = UpdateBothsidePass.updated_list
     Array[File] complex_resolve_background_fail_lists = UpdateBackgroundFail.updated_list
+    Array[File] breakpoint_overlap_dropped_record_vcfs = BreakpointOverlap.dropped_record_vcf
+    Array[File] breakpoint_overlap_dropped_record_vcf_indexes = BreakpointOverlap.dropped_record_vcf_index
     File? merged_vcf = ConcatVcfs.concat_vcf
     File? merged_vcf_index = ConcatVcfs.concat_vcf_idx
   }
@@ -351,14 +353,18 @@ task BreakpointOverlap {
       ~{vcf} \
       ~{bothside_pass_list} \
       ~{background_fail_list} \
+      ~{prefix}.dropped_records.vcf.gz
       | bgzip \
       > ~{prefix}.vcf.gz
     tabix ~{prefix}.vcf.gz
+    tabix ~{prefix}.dropped_records.vcf.gz
   >>>
 
   output {
     File out = "~{prefix}.vcf.gz"
     File out_index = "~{prefix}.vcf.gz.tbi"
+    File dropped_record_vcf = "~{prefix}.dropped_records.vcf.gz"
+    File dropped_record_vcf_index = "~{prefix}.dropped_records.vcf.gz.tbi"
   }
 }
 
