@@ -17,7 +17,6 @@ workflow ResolveComplexSv {
     Array[File] disc_files
     Array[File] rf_cutoff_files
     File pe_exclude_list
-    Boolean inv_only
     File ref_dict
 
     Int precluster_distance
