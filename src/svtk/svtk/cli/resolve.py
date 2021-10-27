@@ -453,7 +453,7 @@ def main(argv):
     for line in CPX_INFO:
         vcf.header.add_line(line)
 
-    resolved_pipe = subprocess.Popen(['vcf-sort'], #TODO
+    resolved_pipe = subprocess.Popen(['vcf-sort', '-c'],
                                      stdin=subprocess.PIPE,
                                      stdout=args.resolved)
 
