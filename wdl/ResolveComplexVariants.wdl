@@ -353,7 +353,7 @@ task BreakpointOverlap {
       ~{vcf} \
       ~{bothside_pass_list} \
       ~{background_fail_list} \
-      ~{prefix}.dropped_records.vcf.gz
+      ~{prefix}.dropped_records.vcf.gz \
       | bgzip \
       > ~{prefix}.vcf.gz
     tabix ~{prefix}.vcf.gz

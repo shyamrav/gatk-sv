@@ -1,13 +1,15 @@
 version 1.0
 
+import "Utils.wdl" as utils
 import "Structs.wdl"
 
 workflow PatchSRBothsidePass {
     input {
-        Array[File] batch_vcfs
+        Array[File] batch_sample_lists
         File cohort_vcf
         File updated_bothside_pass_list
         String cohort_name
+        String contig
 
         File patch_script
 
@@ -18,25 +20,24 @@ workflow PatchSRBothsidePass {
         RuntimeAttr? runtime_attr_calculate_support_frac
     }
 
-    scatter (i in range(length(batch_vcfs))) {
+    scatter (i in range(length(batch_sample_lists))) {
         call GetNonRefVariantLists {
             input:
-                batch_vcf=batch_vcfs[i],
+                samples_list=batch_sample_lists[i],
                 cohort_vcf=cohort_vcf,
-                prefix="~{cohort_name}.non_ref_variants.shard_~{i}",
+                prefix="~{cohort_name}.~{contig}.non_ref_variants.shard_~{i}",
                 sv_base_mini_docker=sv_base_mini_docker,
                 runtime_attr_override=runtime_attr_get_non_ref_vids
         }
     }
 
-    Int num_batches = length(batch_vcfs)
     call RecalculateBothsideSupportFractions {
         input:
             patch_script=patch_script,
             non_ref_vid_lists=GetNonRefVariantLists.out,
             updated_bothside_pass_list=updated_bothside_pass_list,
-            num_batches=num_batches,
-            prefix="~{cohort_name}.sr_bothside_support.patched",
+            num_batches=length(batch_sample_lists),
+            prefix="~{cohort_name}.~{contig}.sr_bothside_support.patched",
             sv_pipeline_docker=sv_pipeline_docker,
             runtime_attr_override=runtime_attr_calculate_support_frac
     }
@@ -48,14 +49,14 @@ workflow PatchSRBothsidePass {
 
 task GetNonRefVariantLists {
     input {
-        File batch_vcf
+        File samples_list
         File cohort_vcf
         String prefix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
     }
 
-    Float input_size = size([batch_vcf, cohort_vcf], "GB")
+    Float input_size = size(cohort_vcf, "GB")
     RuntimeAttr runtime_default = object {
                                       mem_gb: 3.75,
                                       disk_gb: ceil(10.0 + input_size),
@@ -77,17 +78,15 @@ task GetNonRefVariantLists {
 
     command <<<
         set -euo pipefail
-        bcftools query -l ~{batch_vcf} > samples.list
-        bcftools view --samples-file samples.list ~{cohort_vcf} \
-            | bcftools view -G -i 'SUM(AC)>0||SUM(FORMAT/SR_GT)>0' \
-            | bcftools query -f '%ID\n' \
-            > ~{prefix}.list
+        bcftools view --samples-file ~{samples_list} ~{cohort_vcf} \
+        | bcftools view -G -i 'SUM(AC)>0||SUM(FORMAT/SR_GT)>0' \
+        | bcftools query -f '%ID\n' \
+        > ~{prefix}.list
     >>>
     output {
         File out = "~{prefix}.list"
     }
 }
-
 
 task RecalculateBothsideSupportFractions {
     input {
