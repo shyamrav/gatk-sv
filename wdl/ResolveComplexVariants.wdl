@@ -143,7 +143,6 @@ workflow ResolveComplexVariants {
         mei_bed=mei_bed,
         pe_exclude_list=pe_exclude_list,
         rf_cutoff_files=rf_cutoff_files,
-        inv_only=false,
         ref_dict=ref_dict,
         precluster_distance=2000,
         precluster_overlap_frac=0.000000001,
