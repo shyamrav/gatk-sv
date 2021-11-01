@@ -465,7 +465,7 @@ task RestoreUnresolvedCnv {
   Float input_size = size([resolved_vcf, unresolved_vcf], "GiB")
   RuntimeAttr runtime_default = object {
     mem_gb: 2.0,
-    disk_gb: ceil(10 + input_size * 4),
+    disk_gb: ceil(10 + input_size * 20),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
