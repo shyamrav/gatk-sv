@@ -245,7 +245,7 @@ task IntegrateResolvedVcfs {
   Float input_size = size([inv_res_vcf, all_res_vcf], "GiB")
   RuntimeAttr runtime_default = object {
                                   mem_gb: 3.75,
-                                  disk_gb: ceil(10 + input_size * 10),
+                                  disk_gb: ceil(10 + input_size * 20),
                                   cpu_cores: 1,
                                   preemptible_tries: 3,
                                   max_retries: 1,
