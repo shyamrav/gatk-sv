@@ -7,12 +7,26 @@ import "ClusterBatchMetrics.wdl" as metrics
 workflow ClusterBatch {
   input {
     Array[File]? manta_vcfs
-    Array[File]? delly_vcfs
     Array[File]? wham_vcfs
     Array[File]? melt_vcfs
     File del_bed
     File dup_bed
     String batch
+    File ploidy_table
+
+    File contigs
+
+    Float pesr_interval_overlap
+    Float pesr_breakend_window
+    String? clustering_algorithm
+
+    File reference_fasta
+    File reference_fasta_fai
+    File reference_dict
+
+    Float? java_mem_fraction
+    String batch
+
     Int pesr_svsize
     Float pesr_frac
     String pesr_flags
@@ -24,7 +38,6 @@ workflow ClusterBatch {
 
     String depth_flags
     Float depth_frac
-    File contigs
 
     # Module metrics parameters
     # Run module metrics workflow at the end - on by default
@@ -33,11 +46,11 @@ workflow ClusterBatch {
     String? sv_pipeline_base_docker  # required if run_module_metrics = true
     File? primary_contigs_list  # required if run_module_metrics = true
     File? baseline_depth_vcf  # baseline files are optional for metrics workflow
-    File? baseline_delly_vcf
     File? baseline_manta_vcf
     File? baseline_wham_vcf
     File? baseline_melt_vcf
 
+    String gatk_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_pesr_cluster
@@ -53,26 +66,6 @@ workflow ClusterBatch {
       input:
         algorithm = "manta",
         vcfs = select_first([manta_vcfs]),
-        svsize = pesr_svsize,
-        frac = pesr_frac,
-        svtypes = "DEL,DUP,INV,BND,INS",
-        flags = pesr_flags,
-        batch = batch,
-        dist = pesr_distance,
-        exclude_list = pesr_exclude_list,
-        contigs = contigs,
-        sv_base_mini_docker = sv_base_mini_docker,
-        sv_pipeline_docker = sv_pipeline_docker,
-        runtime_attr_cluster = runtime_attr_pesr_cluster,
-        runtime_attr_concat = runtime_attr_pesr_concat
-    }
-  }
-
-  if (defined(delly_vcfs) && (length(select_first([delly_vcfs])) > 0)) {
-    call pesr.ClusterPESR as ClusterPESR_delly {
-      input:
-        algorithm = "delly",
-        vcfs = select_first([delly_vcfs]),
         svsize = pesr_svsize,
         frac = pesr_frac,
         svtypes = "DEL,DUP,INV,BND,INS",
@@ -152,12 +145,10 @@ workflow ClusterBatch {
       input:
         name = batch,
         depth_vcf = ClusterDepth.clustered_vcf,
-        delly_vcf = ClusterPESR_delly.clustered_vcf,
         manta_vcf = ClusterPESR_manta.clustered_vcf,
         wham_vcf = ClusterPESR_wham.clustered_vcf,
         melt_vcf = ClusterPESR_melt.clustered_vcf,
         baseline_depth_vcf = baseline_depth_vcf,
-        baseline_delly_vcf = baseline_delly_vcf,
         baseline_manta_vcf = baseline_manta_vcf,
         baseline_wham_vcf = baseline_wham_vcf,
         baseline_melt_vcf = baseline_melt_vcf,
@@ -171,7 +162,6 @@ workflow ClusterBatch {
   output {
     File depth_vcf = ClusterDepth.clustered_vcf
     File? manta_vcf = ClusterPESR_manta.clustered_vcf
-    File? delly_vcf = ClusterPESR_delly.clustered_vcf
     File? wham_vcf = ClusterPESR_wham.clustered_vcf
     File? melt_vcf = ClusterPESR_melt.clustered_vcf
 
