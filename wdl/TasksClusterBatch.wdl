@@ -1,5 +1,7 @@
 version 1.0
 
+import "Structs.wdl"
+
 task SVCluster {
     input {
         Array[File] vcfs
@@ -38,7 +40,7 @@ task SVCluster {
         Float? java_mem_fraction
         String? variant_prefix
 
-        String sv_pipeline_docker
+        String gatk_docker
         RuntimeAttr? runtime_attr_override
     }
 
@@ -112,18 +114,18 @@ task SVCluster {
         memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
         disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
         bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-        docker: sv_pipeline_docker
+        docker: gatk_docker
         preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
         maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
     }
 }
 
-task ExcludeIntervalsPESR {
+task MultiExcludeIntervalsPESR {
     input {
         Array[File] vcfs
         File intervals
         File? intervals_index
-        String output_prefix
+        String output_suffix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
     }
@@ -139,19 +141,21 @@ task ExcludeIntervalsPESR {
     RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
     output {
-        Array[File] out = glob("out/~{output_prefix}.*.vcf.gz")
+        Array[File] out = glob("out/*.vcf.gz")
     }
     command <<<
         set -euo pipefail
         mkdir out/
         i=0
-        while read vcf; do
-            bcftools query -f '%CHROM\t%POS\t%POS\t%ID\t%SVTYPE\n%CHROM\t%END\t%END\t%ID\t%SVTYPE\n%CHR2\t%END2\t%END2\t%ID\t%SVTYPE\n' $vcf \
+        while read VCF; do
+            NAME=$(basename $VCF .vcf.gz)
+            SAMPLE_NUM=`printf %05d $i`
+            bcftools query -f '%CHROM\t%POS\t%POS\t%ID\t%SVTYPE\n%CHROM\t%END\t%END\t%ID\t%SVTYPE\n%CHR2\t%END2\t%END2\t%ID\t%SVTYPE\n' $VCF \
                 | awk '$1!="."' \
                 > ends.bed
             bedtools intersect -wa -a ends.bed -b ~{intervals} | cut -f4 | sort | uniq | cut -f2 \
                 > excluded_vids.list
-            bcftools view -i '%ID!=@excluded_vids.list' $VCF -Oz -o out/~{output_prefix}.${i}.vcf.gz
+            bcftools view -i '%ID!=@excluded_vids.list' $VCF -Oz -o out/$SAMPLE_NUM.$NAME.~{output_suffix}.vcf.gz
             i=$((i+1))
         done < ~{write_lines(vcfs)}
     >>>
@@ -166,60 +170,12 @@ task ExcludeIntervalsPESR {
     }
 }
 
-task SvtkToGatkVcf {
-    input {
-        Array[File] vcfs
-        File ploidy_table
-        File? script
-        String output_prefix
-        String sv_base_mini_docker
-        RuntimeAttr? runtime_attr_override
-    }
-
-    RuntimeAttr default_attr = object {
-                                   cpu_cores: 1,
-                                   mem_gb: 3.75,
-                                   disk_gb: ceil(10 + size(vcfs, "GB") * 2),
-                                   boot_disk_gb: 10,
-                                   preemptible_tries: 3,
-                                   max_retries: 1
-                               }
-    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
-
-    output {
-        Array[File] out = glob("out/~{output_prefix}.*.vcf.gz")
-    }
-    command <<<
-        set -euo pipefail
-        mkdir out/
-        i=0
-        while read vcf; do
-            python ~{default="/opt/sv-pipeline/scripts/format_svtk_vcf_for_gatk.py" script} \
-                $vcf \
-                out/~{output_prefix}.$i.vcf.gz \
-                ~{ploidy_table}
-            i=$((i+1))
-        done < ~{write_lines(vcfs)}
-    >>>
-    runtime {
-        cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
-        memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
-        disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
-        bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-        docker: sv_base_mini_docker
-        preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
-        maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-    }
-}
-
-
-
-task GatkToSvtkVcf {
+task ExcludeIntervalsDepth {
     input {
         File vcf
-        File? script
-        String algorithm
-        File contig_list
+        Float overlap_fraction
+        File intervals
+        File? intervals_index
         String output_prefix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
@@ -237,14 +193,15 @@ task GatkToSvtkVcf {
 
     output {
         File out = "~{output_prefix}.vcf.gz"
+        File out_index = "~{output_prefix}.vcf.gz.tbi"
     }
     command <<<
         set -euo pipefail
-        python ~{default="/opt/sv-pipeline/scripts/format_gatk_vcf_for_svtk.py" script} \
-            ~{vcf} \
-            ~{output_prefix}.vcf.gz \
-            ~{algorithm} \
-            ~{contig_list}
+        bcftools query -f '%CHROM\t%POS\t%END\t%ID\t%SVTYPE\n' ~{vcf} > variants.bed
+        bedtools intersect -f ~{overlap_fraction} -wa -a variants.bed -b ~{intervals} | cut -f4 | sort | uniq | cut -f2 \
+            > excluded_vids.list
+        bcftools view -i '%ID!=@excluded_vids.list' ~{vcf} -Oz -o ~{output_prefix}.vcf.gz
+        tabix ~{output_prefix}.vcf.gz
     >>>
     runtime {
         cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
@@ -252,6 +209,152 @@ task GatkToSvtkVcf {
         disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
         bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
         docker: sv_base_mini_docker
+        preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+        maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+    }
+}
+
+task MultiSvtkToGatkVcf {
+    input {
+        Array[File] vcfs
+        File ploidy_table
+        File? script
+        String? remove_infos
+        String? remove_formats
+        String output_suffix
+        String sv_pipeline_docker
+        RuntimeAttr? runtime_attr_override
+    }
+
+    RuntimeAttr default_attr = object {
+                                   cpu_cores: 1,
+                                   mem_gb: 3.75,
+                                   disk_gb: ceil(10 + size(vcfs, "GB") * 2),
+                                   boot_disk_gb: 10,
+                                   preemptible_tries: 3,
+                                   max_retries: 1
+                               }
+    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+    output {
+        Array[File] out = glob("out/*.vcf.gz")
+    }
+    command <<<
+        set -euo pipefail
+        mkdir out/
+        i=0
+        while read vcf; do
+            NAME=$(basename $VCF .vcf.gz)
+            SAMPLE_NUM=`printf %05d $i`
+            python ~{default="/opt/sv-pipeline/scripts/format_svtk_vcf_for_gatk.py" script} \
+                --vcf $vcf \
+                --out out/$SAMPLE_NUM.$NAME.~{output_suffix}.vcf.gz \
+                --ploidy-table ~{ploidy_table} \
+                ~{"--remove-infos " + remove_infos} \
+                ~{"--remove-formats " + remove_formats}
+            i=$((i+1))
+        done < ~{write_lines(vcfs)}
+    >>>
+    runtime {
+        cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+        memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+        disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+        bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+        docker: sv_pipeline_docker
+        preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+        maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+    }
+}
+
+task GatkToSvtkVcf {
+    input {
+        File vcf
+        File? script
+        String source
+        File contig_list
+        String? remove_infos
+        String? remove_formats
+        String output_prefix
+        String sv_pipeline_docker
+        RuntimeAttr? runtime_attr_override
+    }
+
+    RuntimeAttr default_attr = object {
+                                   cpu_cores: 1,
+                                   mem_gb: 3.75,
+                                   disk_gb: ceil(10 + size(vcf, "GB") * 2),
+                                   boot_disk_gb: 10,
+                                   preemptible_tries: 3,
+                                   max_retries: 1
+                               }
+    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+    output {
+        File out = "~{output_prefix}.vcf.gz"
+        File out_index = "~{output_prefix}.vcf.gz.tbi"
+    }
+    command <<<
+        set -euo pipefail
+        python ~{default="/opt/sv-pipeline/scripts/format_gatk_vcf_for_svtk.py" script} \
+            --vcf ~{vcf} \
+            --out ~{output_prefix}.vcf.gz \
+            --source ~{source} \
+            --contigs ~{contig_list} \
+            ~{"--remove-infos " + remove_infos} \
+            ~{"--remove-formats " + remove_formats}
+        tabix ~{output_prefix}.vcf.gz
+    >>>
+    runtime {
+        cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+        memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+        disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+        bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+        docker: sv_pipeline_docker
+        preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+        maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+    }
+}
+
+task CNVBedToGatkVcf {
+    input {
+        File bed
+        File? script
+        File contig_list
+        File ploidy_table
+        String output_prefix
+        String sv_pipeline_docker
+        RuntimeAttr? runtime_attr_override
+    }
+
+    RuntimeAttr default_attr = object {
+                                   cpu_cores: 1,
+                                   mem_gb: 3.75,
+                                   disk_gb: ceil(10 + size(bed, "GB") * 2),
+                                   boot_disk_gb: 10,
+                                   preemptible_tries: 3,
+                                   max_retries: 1
+                               }
+    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+    output {
+        File out = "~{output_prefix}.vcf.gz"
+        File out_index = "~{output_prefix}.vcf.gz.tbi"
+    }
+    command <<<
+        set -euo pipefail
+        python ~{default="/opt/sv-pipeline/scripts/convert_bed_to_gatk_vcf.py" script} \
+            --bed ~{bed} \
+            --out ~{output_prefix}.vcf.gz \
+            --contigs ~{contig_list} \
+            --ploidy-table ~{ploidy_table}
+        tabix ~{output_prefix}.vcf.gz
+    >>>
+    runtime {
+        cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+        memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+        disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+        bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+        docker: sv_pipeline_docker
         preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
         maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
     }

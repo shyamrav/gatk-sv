@@ -14,11 +14,21 @@ workflow ClusterBatch {
     String batch
     File ploidy_table
 
-    File contigs
+    File contig_list
+
+    File? cnv_bed_to_gatk_vcf_script
+    File? svtk_to_gatk_script
+    File? gatk_to_svtk_script
+
+    File depth_exclude_intervals
+    Float depth_exclude_overlap_fraction
+    String? depth_clustering_algorithm
+    Float depth_interval_overlap
+    Int depth_breakend_window
 
     Float pesr_interval_overlap
-    Float pesr_breakend_window
-    String? clustering_algorithm
+    Int pesr_breakend_window
+    String? pesr_clustering_algorithm
 
     File reference_fasta
     File reference_fasta_fai
@@ -33,6 +43,7 @@ workflow ClusterBatch {
     Int pesr_distance
     File pesr_exclude_list
 
+    File pesr_exclude_list
     File? depth_exclude_list
     Float? depth_exclude_list_frac_max
 
@@ -53,90 +64,131 @@ workflow ClusterBatch {
     String gatk_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
-    RuntimeAttr? runtime_attr_pesr_cluster
-    RuntimeAttr? runtime_attr_pesr_concat
-    RuntimeAttr? runtime_attr_depth_cluster
-    RuntimeAttr? runtime_attr_depth_concat
-    RuntimeAttr? runtime_attr_depth_vcf
-    RuntimeAttr? runtime_attr_rdtest_bed
+
+    RuntimeAttr? runtime_attr_multi_svtk_to_gatk_vcf
+    RuntimeAttr? runtime_attr_exclude_intervals_pesr
+    RuntimeAttr? runtime_attr_svcluster_pesr
+    RuntimeAttr? runtime_override_concat_vcfs_pesr
+    RuntimeAttr? runtime_attr_multi_gatk_to_svtk_vcf
+    RuntimeAttr? runtime_attr_cnv_bed_to_gatk_vcf
+    RuntimeAttr? runtime_override_concat_del_dup
+    RuntimeAttr? runtime_attr_exclude_intervals_depth
+    RuntimeAttr? runtime_attr_svcluster_depth
   }
 
   if (defined(manta_vcfs) && (length(select_first([manta_vcfs])) > 0)) {
     call pesr.ClusterPESR as ClusterPESR_manta {
       input:
-        algorithm = "manta",
-        vcfs = select_first([manta_vcfs]),
-        svsize = pesr_svsize,
-        frac = pesr_frac,
-        svtypes = "DEL,DUP,INV,BND,INS",
-        flags = pesr_flags,
-        batch = batch,
-        dist = pesr_distance,
-        exclude_list = pesr_exclude_list,
-        contigs = contigs,
-        sv_base_mini_docker = sv_base_mini_docker,
-        sv_pipeline_docker = sv_pipeline_docker,
-        runtime_attr_cluster = runtime_attr_pesr_cluster,
-        runtime_attr_concat = runtime_attr_pesr_concat
+        vcfs=select_first([manta_vcfs]),
+        ploidy_table=ploidy_table,
+        batch=batch,
+        caller="manta",
+        svtk_to_gatk_script=svtk_to_gatk_script,
+        gatk_to_svtk_script=gatk_to_svtk_script,
+        exclude_intervals=pesr_exclude_list,
+        contig_list=contig_list,
+        pesr_interval_overlap=pesr_interval_overlap,
+        pesr_breakend_window=pesr_breakend_window,
+        clustering_algorithm=pesr_clustering_algorithm,
+        reference_fasta=reference_fasta,
+        reference_fasta_fai=reference_fasta_fai,
+        reference_dict=reference_dict,
+        java_mem_fraction=java_mem_fraction,
+        gatk_docker=gatk_docker,
+        sv_base_mini_docker=sv_base_mini_docker,
+        sv_pipeline_docker=sv_pipeline_docker,
+        runtime_attr_multi_svtk_to_gatk_vcf=runtime_attr_multi_svtk_to_gatk_vcf,
+        runtime_attr_exclude_intervals_pesr=runtime_attr_exclude_intervals_pesr,
+        runtime_attr_svcluster=runtime_attr_svcluster_pesr,
+        runtime_override_concat_vcfs_pesr=runtime_override_concat_vcfs_pesr,
+        runtime_attr_multi_gatk_to_svtk_vcf=runtime_attr_multi_gatk_to_svtk_vcf
     }
   }
 
   if (defined(wham_vcfs) && (length(select_first([wham_vcfs])) > 0)) {
     call pesr.ClusterPESR as ClusterPESR_wham {
       input:
-        algorithm = "wham",
-        vcfs = select_first([wham_vcfs]),
-        svsize = pesr_svsize,
-        frac = pesr_frac,
-        svtypes = "DEL,DUP,INV,BND,INS",
-        flags = pesr_flags,
-        batch = batch,
-        dist = pesr_distance,
-        exclude_list = pesr_exclude_list,
-        contigs = contigs,
-        sv_base_mini_docker = sv_base_mini_docker,
-        sv_pipeline_docker = sv_pipeline_docker,
-        runtime_attr_cluster = runtime_attr_pesr_cluster,
-        runtime_attr_concat = runtime_attr_pesr_concat
+        vcfs=select_first([wham_vcfs]),
+        ploidy_table=ploidy_table,
+        batch=batch,
+        caller="wham",
+        svtk_to_gatk_script=svtk_to_gatk_script,
+        gatk_to_svtk_script=gatk_to_svtk_script,
+        exclude_intervals=pesr_exclude_list,
+        contig_list=contig_list,
+        pesr_interval_overlap=pesr_interval_overlap,
+        pesr_breakend_window=pesr_breakend_window,
+        clustering_algorithm=pesr_clustering_algorithm,
+        reference_fasta=reference_fasta,
+        reference_fasta_fai=reference_fasta_fai,
+        reference_dict=reference_dict,
+        java_mem_fraction=java_mem_fraction,
+        gatk_docker=gatk_docker,
+        sv_base_mini_docker=sv_base_mini_docker,
+        sv_pipeline_docker=sv_pipeline_docker,
+        runtime_attr_multi_svtk_to_gatk_vcf=runtime_attr_multi_svtk_to_gatk_vcf,
+        runtime_attr_exclude_intervals_pesr=runtime_attr_exclude_intervals_pesr,
+        runtime_attr_svcluster=runtime_attr_svcluster_pesr,
+        runtime_override_concat_vcfs_pesr=runtime_override_concat_vcfs_pesr,
+        runtime_attr_multi_gatk_to_svtk_vcf=runtime_attr_multi_gatk_to_svtk_vcf
     }
   }
 
   if (defined(melt_vcfs) && (length(select_first([melt_vcfs])) > 0)) {
     call pesr.ClusterPESR as ClusterPESR_melt {
       input:
-        algorithm = "melt",
-        vcfs = select_first([melt_vcfs]),
-        svsize = pesr_svsize,
-        frac = pesr_frac,
-        svtypes = "DEL,DUP,INV,BND,INS",
-        flags = pesr_flags,
-        batch = batch,
-        dist = pesr_distance,
-        exclude_list = pesr_exclude_list,
-        contigs = contigs,
-        sv_base_mini_docker = sv_base_mini_docker,
-        sv_pipeline_docker = sv_pipeline_docker,
-        runtime_attr_cluster = runtime_attr_pesr_cluster,
-        runtime_attr_concat = runtime_attr_pesr_concat
+        vcfs=select_first([melt_vcfs]),
+        ploidy_table=ploidy_table,
+        batch=batch,
+        caller="melt",
+        svtk_to_gatk_script=svtk_to_gatk_script,
+        gatk_to_svtk_script=gatk_to_svtk_script,
+        exclude_intervals=pesr_exclude_list,
+        contig_list=contig_list,
+        pesr_interval_overlap=pesr_interval_overlap,
+        pesr_breakend_window=pesr_breakend_window,
+        clustering_algorithm=pesr_clustering_algorithm,
+        reference_fasta=reference_fasta,
+        reference_fasta_fai=reference_fasta_fai,
+        reference_dict=reference_dict,
+        java_mem_fraction=java_mem_fraction,
+        gatk_docker=gatk_docker,
+        sv_base_mini_docker=sv_base_mini_docker,
+        sv_pipeline_docker=sv_pipeline_docker,
+        runtime_attr_multi_svtk_to_gatk_vcf=runtime_attr_multi_svtk_to_gatk_vcf,
+        runtime_attr_exclude_intervals_pesr=runtime_attr_exclude_intervals_pesr,
+        runtime_attr_svcluster=runtime_attr_svcluster_pesr,
+        runtime_override_concat_vcfs_pesr=runtime_override_concat_vcfs_pesr,
+        runtime_attr_multi_gatk_to_svtk_vcf=runtime_attr_multi_gatk_to_svtk_vcf
     }
   }
 
   call depth.ClusterDepth as ClusterDepth {
-  	input: 
-  	  del_bed = del_bed,
-  	  dup_bed = dup_bed,
-  	  batch = batch,
-  	  contigs = contigs,
-  	  frac = depth_frac,
-  	  exclude_list = depth_exclude_list,
-      exclude_list_frac_max = depth_exclude_list_frac_max,
-  	  flags = depth_flags,
-      sv_base_mini_docker = sv_base_mini_docker,
-      sv_pipeline_docker = sv_pipeline_docker,
-  	  runtime_attr_bed_cluster = runtime_attr_depth_cluster,
-  	  runtime_attr_concat = runtime_attr_depth_concat,
-  	  runtime_attr_depth_vcf = runtime_attr_depth_vcf,
-  	  runtime_attr_rdtest_bed = runtime_attr_rdtest_bed
+  	input:
+      del_bed=del_bed,
+      dup_bed=dup_bed,
+      batch=batch,
+      ploidy_table=ploidy_table,
+      contig_list=contig_list,
+      exclude_intervals=depth_exclude_intervals,
+      exclude_overlap_fraction=depth_exclude_overlap_fraction,
+      clustering_algorithm=depth_clustering_algorithm,
+      depth_interval_overlap=depth_interval_overlap,
+      depth_breakend_window=depth_breakend_window,
+      gatk_to_svtk_script=gatk_to_svtk_script,
+      cnv_bed_to_gatk_vcf_script=cnv_bed_to_gatk_vcf_script,
+      java_mem_fraction=java_mem_fraction,
+      reference_fasta=reference_fasta,
+      reference_fasta_fai=reference_fasta_fai,
+      reference_dict=reference_dict,
+      gatk_docker=gatk_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
+      sv_pipeline_docker=sv_pipeline_docker,
+      runtime_attr_cnv_bed_to_gatk_vcf=runtime_attr_cnv_bed_to_gatk_vcf,
+      runtime_override_concat_del_dup=runtime_override_concat_del_dup,
+      runtime_attr_exclude_intervals_depth=runtime_attr_exclude_intervals_depth,
+      runtime_attr_svcluster=runtime_attr_svcluster_depth,
+      runtime_attr_multi_gatk_to_svtk_vcf=runtime_attr_multi_gatk_to_svtk_vcf
   }
 
   Boolean run_module_metrics_ = if defined(run_module_metrics) then select_first([run_module_metrics]) else true

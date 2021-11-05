@@ -4,7 +4,7 @@ import argparse
 import pysam
 import sys
 import gzip
-from typing import List, Text, Set, Dict
+from typing import List, Text, Set, Dict, Optional
 
 
 def __parse_bnd_ends(vcf_path: Text) -> Dict[Text, int]:
@@ -149,7 +149,6 @@ def convert(record: pysam.VariantRecord,
     # fix SVLEN, STRANDS, CHR2, and END2 where needed
     if svtype == 'INS':
         new_record.info['SVLEN'] = record.info['SVLEN']
-        new_record.info['STRANDS'] = record.info['STRANDS']
     elif svtype == 'BND':
         new_record.info['STRANDS'] = record.info['STRANDS']
         new_record.info['CHR2'] = record.info['CHR2']

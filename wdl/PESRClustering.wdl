@@ -8,61 +8,66 @@ workflow ClusterPESR {
   input {
     Array[File] vcfs
     Array[File] vcf_indexes
+
     File ploidy_table
     String batch
     String caller
 
     File? svtk_to_gatk_script
+    File? gatk_to_svtk_script
+    Float? java_mem_fraction
 
     File exclude_intervals
-    File contigs
+    File contig_list
 
     Float pesr_interval_overlap
-    Float pesr_breakend_window
-    String? algorithm
+    Int pesr_breakend_window
+    String? clustering_algorithm
 
     File reference_fasta
     File reference_fasta_fai
     File reference_dict
 
-    Float? java_mem_fraction
-
     String gatk_docker
     String sv_base_mini_docker
-    RuntimeAttr? runtime_attr_svcluster
+    String sv_pipeline_docker
+
+    RuntimeAttr? runtime_attr_multi_svtk_to_gatk_vcf
     RuntimeAttr? runtime_attr_exclude_intervals_pesr
+    RuntimeAttr? runtime_attr_svcluster
     RuntimeAttr? runtime_override_concat_vcfs_pesr
+    RuntimeAttr? runtime_attr_multi_gatk_to_svtk_vcf
   }
 
-  call tasks_cluster.SvtkToGatkVcf {
+  call tasks_cluster.MultiSvtkToGatkVcf {
     input:
       vcfs=vcfs,
       ploidy_table=ploidy_table,
-      output_prefix="~{batch}.~{caller}.~{contig}.reformatted",
+      output_suffix="gatk_formatted",
       script=svtk_to_gatk_script,
-      sv_base_mini_docker=sv_base_mini_docker,
-      runtime_attr_override=runtime_attr_exclude_intervals_pesr
+      sv_pipeline_docker=sv_pipeline_docker,
+      runtime_attr_override=runtime_attr_multi_svtk_to_gatk_vcf
   }
 
-  call tasks_cluster.ExcludeIntervalsPESR {
+  call tasks_cluster.MultiExcludeIntervalsPESR {
     input:
-      vcfs=SvtkToGatkVcf.out,
-      output_prefix="~{batch}.~{caller}.exclude_intervals",
+      vcfs=MultiSvtkToGatkVcf.out,
+      output_suffix="exclude_intervals",
       intervals=exclude_intervals,
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_exclude_intervals_pesr
   }
 
-  Array[Array[String]] contiglist = read_tsv(contigs)
-  scatter (contig in contiglist) {
+  Array[String] contigs = transpose(read_tsv(contig_list))[0]
+  scatter (contig in contigs) {
     call tasks_cluster.SVCluster {
       input:
-        vcfs=ExcludeIntervalsPESR.out,
+        vcfs=MultiExcludeIntervalsPESR.out,
         ploidy_table=ploidy_table,
         output_prefix="~{batch}.~{caller}.~{contig}.clustered",
         contig=contig,
         fast_mode=true,
-        algorithm=algorithm,
+        algorithm=clustering_algorithm,
         pesr_sample_overlap=0,
         pesr_interval_overlap=pesr_interval_overlap,
         pesr_breakend_window=pesr_breakend_window,
@@ -86,8 +91,20 @@ workflow ClusterPESR {
       runtime_attr_override=runtime_override_concat_vcfs_pesr
   }
 
+  call tasks_cluster.GatkToSvtkVcf {
+    input:
+      vcf=ConcatVcfs.concat_vcf,
+      output_prefix="~{batch}.~{caller}.clustered.svtk_formatted",
+      script=gatk_to_svtk_script,
+      source=caller,
+      contig_list=contig_list,
+      remove_formats="CN",
+      sv_pipeline_docker=sv_pipeline_docker,
+      runtime_attr_override=runtime_attr_multi_gatk_to_svtk_vcf
+  }
+
   output {
-    File clustered_vcf = ConcatVcfs.concat_vcf
-    File clustered_vcf_index = SVCluster.concat_vcf_idx
+    File clustered_vcf = GatkToSvtkVcf.out
+    File clustered_vcf_index = GatkToSvtkVcf.out_index
   }
 }
