@@ -224,7 +224,7 @@ def __parse_ploidy_table(path: Text) -> Dict[Text, Dict[Text, int]]:
 def __parse_arguments(argv: List[Text]) -> argparse.Namespace:
     # noinspection PyTypeChecker
     parser = argparse.ArgumentParser(
-        description="Convert a GATK-style SV VCF to SVTK-style",
+        description="Convert a BED file of CNVs to a GATK-style VCF",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--bed", type=str, required=True,

@@ -3,6 +3,7 @@ version 1.0
 import "PESRClustering.wdl" as pesr
 import "DepthClustering.wdl" as depth
 import "ClusterBatchMetrics.wdl" as metrics
+import "TasksClusterBatch.wdl" as tasks
 
 workflow ClusterBatch {
   input {
@@ -12,10 +13,11 @@ workflow ClusterBatch {
     File del_bed
     File dup_bed
     String batch
-    File ploidy_table
+    File ped
 
     File contig_list
 
+    File? ploidy_table_script
     File? cnv_bed_to_gatk_vcf_script
     File? svtk_to_gatk_script
     File? gatk_to_svtk_script
@@ -33,6 +35,8 @@ workflow ClusterBatch {
     File reference_fasta
     File reference_fasta_fai
     File reference_dict
+    String? chr_x
+    String? chr_y
 
     Float? java_mem_fraction
     String batch
@@ -65,6 +69,7 @@ workflow ClusterBatch {
     String sv_base_mini_docker
     String sv_pipeline_docker
 
+    RuntimeAttr? runtime_attr_create_ploidy
     RuntimeAttr? runtime_attr_multi_svtk_to_gatk_vcf
     RuntimeAttr? runtime_attr_exclude_intervals_pesr
     RuntimeAttr? runtime_attr_svcluster_pesr
@@ -76,11 +81,23 @@ workflow ClusterBatch {
     RuntimeAttr? runtime_attr_svcluster_depth
   }
 
+  call tasks.CreatePloidyTableFromPed {
+    input:
+      ped=ped,
+      script=ploidy_table_script,
+      contig_list=contig_list,
+      chr_x=chr_x,
+      chr_y=chr_y,
+      output_prefix="~{batch}.ploidy",
+      sv_pipeline_docker=sv_pipeline_docker,
+      runtime_attr_override=runtime_attr_create_ploidy
+  }
+
   if (defined(manta_vcfs) && (length(select_first([manta_vcfs])) > 0)) {
     call pesr.ClusterPESR as ClusterPESR_manta {
       input:
         vcfs=select_first([manta_vcfs]),
-        ploidy_table=ploidy_table,
+        ploidy_table=CreatePloidyTableFromPed.out,
         batch=batch,
         caller="manta",
         svtk_to_gatk_script=svtk_to_gatk_script,
@@ -109,7 +126,7 @@ workflow ClusterBatch {
     call pesr.ClusterPESR as ClusterPESR_wham {
       input:
         vcfs=select_first([wham_vcfs]),
-        ploidy_table=ploidy_table,
+        ploidy_table=CreatePloidyTableFromPed.out,
         batch=batch,
         caller="wham",
         svtk_to_gatk_script=svtk_to_gatk_script,
@@ -138,7 +155,7 @@ workflow ClusterBatch {
     call pesr.ClusterPESR as ClusterPESR_melt {
       input:
         vcfs=select_first([melt_vcfs]),
-        ploidy_table=ploidy_table,
+        ploidy_table=CreatePloidyTableFromPed.out,
         batch=batch,
         caller="melt",
         svtk_to_gatk_script=svtk_to_gatk_script,
@@ -168,7 +185,7 @@ workflow ClusterBatch {
       del_bed=del_bed,
       dup_bed=dup_bed,
       batch=batch,
-      ploidy_table=ploidy_table,
+      ploidy_table=CreatePloidyTableFromPed.out,
       contig_list=contig_list,
       exclude_intervals=depth_exclude_intervals,
       exclude_overlap_fraction=depth_exclude_overlap_fraction,
