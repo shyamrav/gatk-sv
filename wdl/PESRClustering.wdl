@@ -7,7 +7,6 @@ import "TasksMakeCohortVcf.wdl" as tasks_cohort
 workflow ClusterPESR {
   input {
     Array[File] vcfs
-    Array[File] vcf_indexes
 
     File ploidy_table
     String batch
@@ -54,6 +53,7 @@ workflow ClusterPESR {
       vcfs=MultiSvtkToGatkVcf.out,
       output_suffix="exclude_intervals",
       intervals=exclude_intervals,
+      intervals_index=exclude_intervals + ".tbi",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_exclude_intervals_pesr
   }

@@ -76,6 +76,7 @@ workflow ClusterDepth {
       overlap_fraction=exclude_overlap_fraction,
       output_prefix="~{batch}.depth.exclude_intervals",
       intervals=exclude_intervals,
+      intervals_index=exclude_intervals + ".tbi",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_exclude_intervals_depth
   }

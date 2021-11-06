@@ -124,7 +124,7 @@ task MultiExcludeIntervalsPESR {
     input {
         Array[File] vcfs
         File intervals
-        File? intervals_index
+        File intervals_index
         String output_suffix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
@@ -175,7 +175,7 @@ task ExcludeIntervalsDepth {
         File vcf
         Float overlap_fraction
         File intervals
-        File? intervals_index
+        File intervals_index
         String output_prefix
         String sv_base_mini_docker
         RuntimeAttr? runtime_attr_override
@@ -362,7 +362,7 @@ task CNVBedToGatkVcf {
 
 task CreatePloidyTableFromPed {
     input {
-        File ped
+        File ped_file
         File? script
         File contig_list
         String? chr_x
@@ -388,7 +388,7 @@ task CreatePloidyTableFromPed {
     command <<<
         set -euo pipefail
         python ~{default="/opt/sv-pipeline/scripts/ploidy_table_from_ped.py" script} \
-            --ped ~{ped} \
+            --ped ~{ped_file} \
             --out ~{output_prefix}.tsv \
             --contigs ~{contig_list} \
             ~{"--chr-x " + chr_x} \

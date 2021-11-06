@@ -7,52 +7,39 @@ import "TasksClusterBatch.wdl" as tasks
 
 workflow ClusterBatch {
   input {
+    String batch
     Array[File]? manta_vcfs
     Array[File]? wham_vcfs
     Array[File]? melt_vcfs
     File del_bed
     File dup_bed
-    String batch
-    File ped
+    File ped_file
 
+    # Reference
     File contig_list
-
-    File? ploidy_table_script
-    File? cnv_bed_to_gatk_vcf_script
-    File? svtk_to_gatk_script
-    File? gatk_to_svtk_script
-
-    File depth_exclude_intervals
-    Float depth_exclude_overlap_fraction
-    String? depth_clustering_algorithm
-    Float depth_interval_overlap
-    Int depth_breakend_window
-
-    Float pesr_interval_overlap
-    Int pesr_breakend_window
-    String? pesr_clustering_algorithm
-
     File reference_fasta
     File reference_fasta_fai
     File reference_dict
     String? chr_x
     String? chr_y
 
-    Float? java_mem_fraction
-    String batch
+    File? ploidy_table_script
+    File? cnv_bed_to_gatk_vcf_script
+    File? svtk_to_gatk_script
+    File? gatk_to_svtk_script
 
-    Int pesr_svsize
-    Float pesr_frac
-    String pesr_flags
-    Int pesr_distance
-    File pesr_exclude_list
+    # Depth-based variant clustering
+    File depth_exclude_intervals
+    Float depth_exclude_overlap_fraction
+    Float depth_interval_overlap
+    Int depth_breakend_window
+    String? depth_clustering_algorithm
 
-    File pesr_exclude_list
-    File? depth_exclude_list
-    Float? depth_exclude_list_frac_max
-
-    String depth_flags
-    Float depth_frac
+    # PESR-based variant clustering
+    File pesr_exclude_intervals
+    Float pesr_interval_overlap
+    Int pesr_breakend_window
+    String? pesr_clustering_algorithm
 
     # Module metrics parameters
     # Run module metrics workflow at the end - on by default
@@ -69,6 +56,8 @@ workflow ClusterBatch {
     String sv_base_mini_docker
     String sv_pipeline_docker
 
+    Float? java_mem_fraction
+
     RuntimeAttr? runtime_attr_create_ploidy
     RuntimeAttr? runtime_attr_multi_svtk_to_gatk_vcf
     RuntimeAttr? runtime_attr_exclude_intervals_pesr
@@ -83,7 +72,7 @@ workflow ClusterBatch {
 
   call tasks.CreatePloidyTableFromPed {
     input:
-      ped=ped,
+      ped_file=ped_file,
       script=ploidy_table_script,
       contig_list=contig_list,
       chr_x=chr_x,
@@ -102,7 +91,7 @@ workflow ClusterBatch {
         caller="manta",
         svtk_to_gatk_script=svtk_to_gatk_script,
         gatk_to_svtk_script=gatk_to_svtk_script,
-        exclude_intervals=pesr_exclude_list,
+        exclude_intervals=pesr_exclude_intervals,
         contig_list=contig_list,
         pesr_interval_overlap=pesr_interval_overlap,
         pesr_breakend_window=pesr_breakend_window,
@@ -131,7 +120,7 @@ workflow ClusterBatch {
         caller="wham",
         svtk_to_gatk_script=svtk_to_gatk_script,
         gatk_to_svtk_script=gatk_to_svtk_script,
-        exclude_intervals=pesr_exclude_list,
+        exclude_intervals=pesr_exclude_intervals,
         contig_list=contig_list,
         pesr_interval_overlap=pesr_interval_overlap,
         pesr_breakend_window=pesr_breakend_window,
@@ -160,7 +149,7 @@ workflow ClusterBatch {
         caller="melt",
         svtk_to_gatk_script=svtk_to_gatk_script,
         gatk_to_svtk_script=gatk_to_svtk_script,
-        exclude_intervals=pesr_exclude_list,
+        exclude_intervals=pesr_exclude_intervals,
         contig_list=contig_list,
         pesr_interval_overlap=pesr_interval_overlap,
         pesr_breakend_window=pesr_breakend_window,
