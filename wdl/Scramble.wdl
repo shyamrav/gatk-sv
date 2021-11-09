@@ -15,7 +15,6 @@ workflow Scramble {
     String sample_name
     File reference_fasta
     Boolean detect_deletions
-    String sv_base_mini_docker
     String scramble_docker
     RuntimeAttr? runtime_attr_scramble
   }
@@ -23,14 +22,14 @@ workflow Scramble {
   parameter_meta {
     bam_or_cram_file: "A .bam or .cram file to search for SVs. crams are preferable because they localise faster and use less disk."
     bam_or_cram_index: "Index for bam_or_cram_file."
-    sample_name: "A sample name. Outputs will be sample_name + '.scramble.insertions.vcf' and sample_name + '.scramble.deletions.vcf'."
-    reference_fasta: "A .fasta file with the reference used to align bam or cram file."
+    sample_name: "A sample name. Outputs will be sample_name+'.scramble.insertions.vcf.gz' and sample_name+'.scramble.deletions.vcf.gz'."
+    reference_fasta: "A FASTA file (may be compressed) with the reference used to align bam or cram file."
     detect_deletions: "Run deletion detection as well as mobile element insertion."
   }
   
   meta {
-      author: "Ted Sharpe"
-      email: "tsharpe@broadinstitute.org"
+    author: "Ted Sharpe, et al"
+    email: "tsharpe@broadinstitute.org"
   }
 
   call RunScramble {
@@ -46,7 +45,9 @@ workflow Scramble {
 
   output {
     File insertions_vcf = RunScramble.insertions_vcf
+    File insertions_index = RunScramble.insertions_index
     File? deletions_vcf = RunScramble.deletions_vcf
+    File? deletions_index = RunScramble.deletions_index
   }
 }
 
@@ -72,8 +73,10 @@ task RunScramble {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   output {
-    File insertions_vcf = "${sample_name}.scramble.insertions.vcf"
-    File? deletions_vcf = "${sample_name}.scramble.deletions.vcf"
+    File insertions_vcf = "${sample_name}.scramble.insertions.vcf.gz"
+    File insertions_index = "${sample_name}.scramble.insertions.vcf.gz.tbi"
+    File? deletions_vcf = "${sample_name}.scramble.deletions.vcf.gz"
+    File? deletions_index = "${sample_name}.scramble.deletions.vcf.gz.tbi"
   }
   command <<<
     set -euo pipefail
@@ -102,36 +105,34 @@ task RunScramble {
     EOF
 
     blastdbcmd -db ref -entry all -outfmt "##contig=<ID=%a,length=%l>" >> hdr
-    echo "#CHROM	ID	REF	ALT	QUAL	FILTER	INFO" >> hdr
+    echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO" >> hdr
     cp hdr insertsVCF.tmp
 
-    cat <<- 'EOF' > processInserts.awk
-{FS=OFS="\t"}
-{
-  if(FNR<2)next
-  split($1,loc,":")
-  start=loc[2]+1
-  len=length($8)
-  end=start+len-1
-  print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10
-}
+    cat << "EOF" > processInserts.awk
+    { FS=OFS="\t" }
+    { if(FNR<2)next
+      split($1,loc,":")
+      start=loc[2]+1
+      len=length($8)
+      end=start+len-1
+      print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10 }
     EOF
     awk -f processInserts.awk xyzzy???_MEIs.txt >> insertsVCF.tmp
-    mv insertsVCF.tmp "${sample_name}.scramble.insertions.vcf"
+    bcftools sort -Oz <insertsVCF.tmp >"${sample_name}.scramble.insertions.vcf.gz"
+    bcftools index -ft "${sample_name}.scramble.insertions.vcf.gz"
 
     if [ ${detect_deletions} == "true" ]
     then
       cp hdr deletesVCF.tmp
-      cat <<- 'EOF' > processDeletes.awk
-{FS=OFS="\t"}
-{
-  if(FNR<2)next
-  Q= $11=="NA" ? ($15=="NA"?".":$15) : ($15=="NA"?$11:($11+$15)/2)
-  print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5
-}
+      cat << "EOF" > processDeletes.awk
+      { FS=OFS="\t" }
+      { if(FNR<2)next
+        Q= $11=="NA" ? ($15=="NA"?".":$15) : ($15=="NA"?$11:($11+$15)/2)
+        print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5 }
       EOF
       awk -f processDeletes.awk xyzzy???_PredictedDeletions.txt >> deletesVCF.tmp
-      mv deletesVCF.tmp "${sample_name}.scramble.deletions.vcf"
+      bcftools sort -Oz <deletesVCF.tmp >"${sample_name}.scramble.deletions.vcf.gz"
+      bcftools index -ft "${sample_name}.scramble.deletions.vcf.gz"
     fi
   >>>
   runtime {

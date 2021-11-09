@@ -8,6 +8,7 @@ workflow PreprocessPESR {
     Array[File]? manta_vcfs        # Manta VCF
     Array[File]? delly_vcfs        # Delly VCF
     Array[File]? melt_vcfs         # Melt VCF
+    Array[File]? scramble_vcfs     # Scramble VCF
     Array[File]? wham_vcfs         # Wham VCF
     File contigs          # .fai file of included contigs
     Int min_svsize        # Minimum SV length to include
@@ -15,8 +16,8 @@ workflow PreprocessPESR {
     RuntimeAttr? runtime_attr
   }
 
-  Array[String] algorithms = ["manta", "delly", "melt", "wham"]
-  Array[Array[File]?] vcfs = [manta_vcfs, delly_vcfs, melt_vcfs, wham_vcfs]
+  Array[String] algorithms = ["manta", "delly", "melt", "scramble", "wham"]
+  Array[Array[File]?] vcfs = [manta_vcfs, delly_vcfs, melt_vcfs, scramble_vcfs, wham_vcfs]
 
   scatter (i in range(length(algorithms))) {
     if (defined(vcfs[i]) && (length(select_first([vcfs[i]])) > 0)) {
@@ -36,7 +37,8 @@ workflow PreprocessPESR {
     Array[File]? std_manta_vcf = StandardizeVCFs.std_vcf[0]
     Array[File]? std_delly_vcf = StandardizeVCFs.std_vcf[1]
     Array[File]? std_melt_vcf = StandardizeVCFs.std_vcf[2]
-    Array[File]? std_wham_vcf = StandardizeVCFs.std_vcf[3]
+    Array[File]? std_scramble_vcf = StandardizeVCFs.std_vcf[3]
+    Array[File]? std_wham_vcf = StandardizeVCFs.std_vcf[4]
   }
 }
 
