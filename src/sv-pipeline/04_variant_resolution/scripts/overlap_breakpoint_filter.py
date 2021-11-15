@@ -29,7 +29,10 @@ def multisort(xs, specs):
 class RecordData:
     def __init__(self, record):
         self.id = record.id
-        ev = set(record.info['EVIDENCE'])
+        if 'EVIDENCE' in record.info:
+            ev = set(record.info['EVIDENCE'])
+        else:
+            ev = set()
         if 'PE' in ev and 'SR' in ev and 'RD' in ev:
             self.level_of_support = 1
         elif 'PE' in ev and 'RD' in ev:
