@@ -24,6 +24,9 @@ workflow CleanVcfChromosome {
     File? outlier_samples_list
     Int? max_samples_per_shard_step3
 
+    String chr_x
+    String chr_y
+
     File hail_script
     String project
 
@@ -93,6 +96,8 @@ workflow CleanVcfChromosome {
         bothsides_pass_list=bothsides_pass_list,
         ped_file=ped_file,
         allosome_fai=allosome_fai,
+        chr_x=chr_x,
+        chr_y=chr_y,
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_clean_vcf_1a
     }
@@ -274,6 +279,8 @@ task CleanVcf1a {
     File bothsides_pass_list
     File ped_file
     File allosome_fai
+    String chr_x
+    String chr_y
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -301,23 +308,24 @@ task CleanVcf1a {
   command <<<
     set -euo pipefail
 
+    touch ~{prefix}.includelist.txt
+    touch ~{prefix}.sexchr.revise.txt
+
     # outputs
     # includelist.txt: the names of all the samples in the input vcf
     # sexchr.revise.txt: the names of the events where genotypes got tweaked on allosomes
     # stdout: a revised vcf
-    touch includelist.txt
-    touch sexchr.revise.txt
-    zcat ~{vcf} \
-      | awk \
-        -v allosomeFile="~{allosome_fai}" \
-        -v pedFile="~{ped_file}" \
-        -v bgdFile="~{background_fail_list}" \
-        -v bothFile="~{bothsides_pass_list}" \
-        -f /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1.awk \
+    java -jar $CLEAN_VCF_PART_1_JAR \
+      ~{vcf} \
+      ~{ped_file} \
+      ~{chr_x} \
+      ~{chr_y} \
+      ~{background_fail_list} \
+      ~{bothsides_pass_list} \
+      ~{prefix}.includelist.txt \
+      ~{prefix}.sexchr.revise.txt \
       | bgzip \
       > ~{prefix}.vcf.gz
-    mv includelist.txt ~{prefix}.includelist.txt
-    mv sexchr.revise.txt ~{prefix}.sexchr.revise.txt
     tabix ~{prefix}.vcf.gz
   >>>
 

@@ -22,6 +22,9 @@ workflow CleanVcf {
     Int clean_vcf5_records_per_shard
     Int? clean_vcf5_threads_per_task
 
+    String chr_x
+    String chr_y
+
     File? outlier_samples_list
 
     File hail_script
@@ -98,6 +101,8 @@ workflow CleanVcf {
         clean_vcf1b_records_per_shard=clean_vcf1b_records_per_shard,
         clean_vcf5_records_per_shard=clean_vcf5_records_per_shard,
         clean_vcf5_threads_per_task=clean_vcf5_threads_per_task,
+        chr_x=chr_x,
+        chr_y=chr_y,
         linux_docker=linux_docker,
         sv_base_mini_docker=sv_base_mini_docker,
         sv_pipeline_updates_docker=sv_pipeline_updates_docker,
