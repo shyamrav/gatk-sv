@@ -73,10 +73,10 @@ task RunScramble {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   output {
-    File insertions_vcf = "${sample_name}.scramble.insertions.vcf.gz"
-    File insertions_index = "${sample_name}.scramble.insertions.vcf.gz.tbi"
-    File? deletions_vcf = "${sample_name}.scramble.deletions.vcf.gz"
-    File? deletions_index = "${sample_name}.scramble.deletions.vcf.gz.tbi"
+    File insertions_vcf = "~{sample_name}.scramble.insertions.vcf.gz"
+    File insertions_index = "~{sample_name}.scramble.insertions.vcf.gz.tbi"
+    File? deletions_vcf = "~{sample_name}.scramble.deletions.vcf.gz"
+    File? deletions_index = "~{sample_name}.scramble.deletions.vcf.gz.tbi"
   }
   command <<<
     set -euo pipefail
@@ -84,55 +84,52 @@ task RunScramble {
     xDir=$PWD
     scrambleDir="/app"
 
-    zcat ${reference_fasta} | makeblastdb -in - -parse_seqids -title ref -dbtype nucl -out ref
-    $scrambleDir/cluster_identifier/src/build/cluster_identifier ${bam_or_cram_file} > clusters.txt
+    zcat ~{reference_fasta} | makeblastdb -in - -parse_seqids -title ref -dbtype nucl -out ref
+    $scrambleDir/cluster_identifier/src/build/cluster_identifier ~{bam_or_cram_file} > clusters.txt
     split -a3 -l3000 clusters.txt xyzzy
 
     for fil in xyzzy???
       do Rscript --vanilla $scrambleDir/cluster_analysis/bin/SCRAMble.R --out-name $xDir/$fil \
            --cluster-file $xDir/$fil --install-dir $scrambleDir/cluster_analysis/bin \
            --mei-refs $scrambleDir/cluster_analysis/resources/MEI_consensus_seqs.fa \
-           --ref $xDir/ref --no-vcf --eval-meis ${true='--eval-dels' false='' detect_deletions}
+           --ref $xDir/ref --no-vcf --eval-meis ~{true='--eval-dels' false='' detect_deletions}
     done
 
-    cat << EOF > hdr
-##fileformat=VCFv4.3
-##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
-##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Difference in length between REF and ALT alleles">
-##INFO=<ID=MEI_START,Number=1,Type=Integer,Description="Start of alignment to canonical MEI sequence">
-##reference=${reference_fasta}
-    EOF
+    echo '##fileformat=VCFv4.3' > hdr
+    echo '##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">' >> hdr
+    echo '##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">' >> hdr
+    echo '##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Difference in length between REF and ALT alleles">' >> hdr
+    echo '##INFO=<ID=MEI_START,Number=1,Type=Integer,Description="Start of alignment to canonical MEI sequence">' >> hdr
+    echo '##reference='"~{reference_fasta}" >> hdr
+    blastdbcmd -db ref -entry all -outfmt '##contig=<ID=%a,length=%l>' >> hdr
+    echo '#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO' >> hdr
 
-    blastdbcmd -db ref -entry all -outfmt "##contig=<ID=%a,length=%l>" >> hdr
-    echo "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO" >> hdr
     cp hdr insertsVCF.tmp
 
-    cat << "EOF" > processInserts.awk
-    { FS=OFS="\t" }
-    { if(FNR<2)next
-      split($1,loc,":")
-      start=loc[2]+1
-      len=length($8)
-      end=start+len-1
-      print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10 }
-    EOF
-    awk -f processInserts.awk xyzzy???_MEIs.txt >> insertsVCF.tmp
-    bcftools sort -Oz <insertsVCF.tmp >"${sample_name}.scramble.insertions.vcf.gz"
-    bcftools index -ft "${sample_name}.scramble.insertions.vcf.gz"
+    echo '{ FS=OFS="\t" }' > processInserts.awk
+    echo '{ if(FNR<2)next' >> processInserts.awk
+    echo '  split($1,loc,":")' >> processInserts.awk
+    echo '  start=loc[2]+1' >> processInserts.awk
+    echo '  len=length($8)' >> processInserts.awk
+    echo '  end=start+len-1' >> processInserts.awk
+    echo '  print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10 }' >> processInserts.awk
 
-    if [ ${detect_deletions} == "true" ]
+    awk -f processInserts.awk xyzzy???_MEIs.txt >> insertsVCF.tmp
+    bcftools sort -Oz <insertsVCF.tmp >"~{sample_name}.scramble.insertions.vcf.gz"
+    bcftools index -ft "~{sample_name}.scramble.insertions.vcf.gz"
+
+    if [ ~{detect_deletions} == "true" ]
     then
       cp hdr deletesVCF.tmp
-      cat << "EOF" > processDeletes.awk
-      { FS=OFS="\t" }
-      { if(FNR<2)next
-        Q= $11=="NA" ? ($15=="NA"?".":$15) : ($15=="NA"?$11:($11+$15)/2)
-        print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5 }
-      EOF
+
+      echo '{ FS=OFS="\t" }' > processDeletes.awk
+      echo '{ if(FNR<2)next' >> processDeletes.awk
+      echo '  Q= $11=="NA" ? ($15=="NA"?".":$15) : ($15=="NA"?$11:($11+$15)/2)' >> processDeletes.awk
+      echo '  print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5 }' >> processDeletes.awk
+
       awk -f processDeletes.awk xyzzy???_PredictedDeletions.txt >> deletesVCF.tmp
-      bcftools sort -Oz <deletesVCF.tmp >"${sample_name}.scramble.deletions.vcf.gz"
-      bcftools index -ft "${sample_name}.scramble.deletions.vcf.gz"
+      bcftools sort -Oz <deletesVCF.tmp >"~{sample_name}.scramble.deletions.vcf.gz"
+      bcftools index -ft "~{sample_name}.scramble.deletions.vcf.gz"
     fi
   >>>
   runtime {
