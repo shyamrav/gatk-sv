@@ -74,7 +74,7 @@ task HailMerge {
                                   mem_gb: 6.5,
                                   disk_gb: 100,
                                   cpu_cores: 1,
-                                  preemptible_tries: 3,
+                                  preemptible_tries: 0,
                                   max_retries: 1,
                                   boot_disk_gb: 10
                                 }
