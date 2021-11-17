@@ -6,10 +6,8 @@ import "Structs.wdl"
 import "TasksMakeCohortVcf.wdl" as MiniTasks
 import "ReviseSVtypeINStoMEI.wdl" as ReviseSVtype
 
-
-
 workflow Module07MinGQ {
-  input{
+  input {
     String sv_base_mini_docker
     String sv_pipeline_docker
     File vcf
@@ -56,7 +54,7 @@ workflow Module07MinGQ {
   Array[Array[String]] contigs = read_tsv(contiglist)
 
   # Get svtype of MEI
-  call ReviseSVtype.ReviseSVtypeINStoMEI as ReviseSVtypeMEI{
+  call ReviseSVtype.ReviseSVtypeINStoMEI as ReviseSVtypeMEI {
     input:
       vcf = vcf,
       vcf_idx = vcf_idx,
@@ -92,15 +90,18 @@ workflow Module07MinGQ {
         prefix=prefix,
         sv_pipeline_docker=sv_pipeline_docker
     }
-    call SplitPcrVcf {
-      input:
-        vcf=getAFs.vcf_wAFs,
-        prefix="~{prefix}.~{contig[0]}",
-        pcrplus_samples_list=pcrplus_samples_list,
-        sv_base_mini_docker=sv_base_mini_docker
+    if (defined(pcrplus_samples_list)) {
+      call SplitPcrVcf {
+        input:
+          vcf=getAFs.vcf_wAFs,
+          prefix="~{prefix}.~{contig[0]}",
+          pcrplus_samples_list=pcrplus_samples_list,
+          sv_base_mini_docker=sv_base_mini_docker
+      }
     }
+    File pcr_minus_vcf = select_first([SplitPcrVcf.PCRMINUS_vcf, getAFs.vcf_wAFs])
 
-    # Dev note Feb 18 2021: the output from cat_AF_table_PCRMINUS is a required 
+    # Dev note Feb 18 2021: the output from cat_AF_table_PCRMINUS is a required
     # input to Module07XfBatchEffect.wdl, so the subsequent three tasks always 
     # need to be generated (even if passing a precomputed minGQ cutoff table)
 
@@ -133,12 +134,12 @@ workflow Module07MinGQ {
   }
 
 
-  if (MingqTraining){
+  if (MingqTraining) {
     ###PCRMINUS
     call SplitFamfile as SplitFamfile_PCRMINUS {
       input:
-        vcf=SplitPcrVcf.PCRMINUS_vcf[0],
-        vcf_idx=SplitPcrVcf.PCRMINUS_vcf_idx[0],
+        vcf=pcr_minus_vcf,
+        vcf_idx=pcr_minus_vcf + ".tbi",
         famfile=trios_famfile,
         fams_per_shard=1,
         prefix="~{prefix}.PCRMINUS",
@@ -147,7 +148,7 @@ workflow Module07MinGQ {
     scatter ( fam in SplitFamfile_PCRMINUS.famfile_shards ) {
       call CollectTrioSVdat as CollectTrioSVdat_PCRMINUS {
         input:
-          vcf_shards=SplitPcrVcf.PCRMINUS_vcf,
+          vcf_shards=pcr_minus_vcf,
           famfile=fam,
           sv_pipeline_docker=sv_pipeline_docker
       }
@@ -324,7 +325,7 @@ task GetSampleLists {
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
     mem_gb: 3.75, 
-    disk_gb: 50,
+    disk_gb: ceil(10 + size(vcf, "GB")),
     boot_disk_gb: 10,
     preemptible_tries: 3,
     max_retries: 1
@@ -332,26 +333,17 @@ task GetSampleLists {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
   command <<<
     set -euo pipefail
-    tabix -H ~{vcf} | fgrep -v "##" | cut -f10- | sed 's/\t/\n/g' > all_samples.list
-    if [ ! -z "~{pcrplus_samples_list}" ];then
-      fgrep -wf ~{pcrplus_samples_list} all_samples.list > "~{prefix}.PCRPLUS.samples.list" || true
-      fgrep -wvf ~{pcrplus_samples_list} all_samples.list > "~{prefix}.PCRMINUS.samples.list" || true
-      cat \
-        <( awk -v OFS="\t" '{ print $1, "PCRPLUS" }' "~{prefix}.PCRPLUS.samples.list" || true ) \
-        <( awk -v OFS="\t" '{ print $1, "PCRMINUS" }' "~{prefix}.PCRMINUS.samples.list" || true ) \
-      > "~{prefix}.PCR_status_assignments.txt"
+    bcftools query -l ~{vcf} > all_samples.list
+    if ~{defined(pcrplus_samples_list)}; then
+      awk -v OFS="\t" 'ARGIND==1{inFileA[$1]; next} {if($1 in inFileA){print $1,"PCRPLUS"}else{print $1,"PCRMINUS"}}' ~{pcrplus_samples_list} all_samples.list \
+        > ~{prefix}.PCR_status_assignments.txt
     else
-      cp all_samples.list "~{prefix}.PCRMINUS.samples.list"
-      cat \
-        <( awk -v OFS="\t" '{ print $1, "PCRMINUS" }' "~{prefix}.PCRMINUS.samples.list" || true ) \
-      > "~{prefix}.PCR_status_assignments.txt"
-      touch ~{prefix}.PCRPLUS.samples.list
+      awk -v OFS="\t" '{ print $1, "PCRMINUS" }' all_samples.list \
+        > ~{prefix}.PCR_status_assignments.txt
     fi
   >>>
 
   output {
-    File updated_pcrplus_samples_list = "~{prefix}.PCRPLUS.samples.list"
-    File updated_PCRMINUS_samples_list = "~{prefix}.PCRMINUS.samples.list"
     File sample_PCR_labels = "~{prefix}.PCR_status_assignments.txt"
   }
 
@@ -372,14 +364,14 @@ task SplitPcrVcf {
   input{
     File vcf
     String prefix
-    File? pcrplus_samples_list
+    File pcrplus_samples_list
     String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
     mem_gb: 3.75, 
-    disk_gb: 50,
+    disk_gb: ceil(10 + size(vcf, "GB") * 2),
     boot_disk_gb: 10,
     preemptible_tries: 3,
     max_retries: 1
@@ -387,34 +379,14 @@ task SplitPcrVcf {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   command <<<
-    if [ ! -z "~{pcrplus_samples_list}" ] && [ $( cat "~{pcrplus_samples_list}" | wc -l ) -gt 0 ]; then
-      #Get index of PCR+ samples
-      PCRPLUS_idxs=$( zcat ~{vcf} | sed -n '1,500p' | fgrep "#" | fgrep -v "##" \
-                      | sed 's/\t/\n/g' | awk -v OFS="\t" '{ print NR, $1 }' \
-                      | fgrep -wf ~{pcrplus_samples_list} | cut -f1 | paste -s -d, )
-      #Get PCR+ VCF
-      zcat ~{vcf} \
-      | cut -f1-9,"$PCRPLUS_idxs" \
-      | bgzip -c \
-      > "~{prefix}.PCRPLUS.vcf.gz"
-      tabix -f -p vcf "~{prefix}.PCRPLUS.vcf.gz"
-      #Get PCR- VCF
-      zcat ~{vcf} \
-      | cut --complement -f"$PCRPLUS_idxs" \
-      | bgzip -c \
-      > "~{prefix}.PCRMINUS.vcf.gz"
-      tabix -f -p vcf "~{prefix}.PCRMINUS.vcf.gz"
-    else
-      cp ~{vcf} ~{prefix}.PCRMINUS.vcf.gz
-      tabix -f -p vcf "~{prefix}.PCRMINUS.vcf.gz"
-      touch ~{prefix}.PCRPLUS.vcf.gz
-      touch ~{prefix}.PCRPLUS.vcf.gz.tbi
-    fi
+    bcftools query -l ~{vcf} > all_samples.list
+    awk 'ARGIND==1{inFileA[$1]; next} !($1 in inFileA)' ~{pcrplus_samples_list} all_samples.list \
+      > pcrminus_samples.list
+    bcftools reheader -s pcrminus_samples.list -Oz -o ~{prefix}.PCRMINUS.vcf.gz
+    tabix ~{prefix}.PCRMINUS.vcf.gz
   >>>
 
   output {
-    File PCRPLUS_vcf = "~{prefix}.PCRPLUS.vcf.gz"
-    File PCRPLUS_vcf_idx = "~{prefix}.PCRPLUS.vcf.gz.tbi"
     File PCRMINUS_vcf = "~{prefix}.PCRMINUS.vcf.gz"
     File PCRMINUS_vcf_idx = "~{prefix}.PCRMINUS.vcf.gz.tbi"
   }
@@ -444,7 +416,7 @@ task GetAfTables {
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
     mem_gb: 3.75, 
-    disk_gb: 50,
+    disk_gb: ceil(10 + size(vcf, "GB") * 3),
     boot_disk_gb: 10,
     preemptible_tries: 3,
     max_retries: 1
@@ -464,9 +436,9 @@ task GetAfTables {
             | cut -f2 \
             | paste -s -d\, || true )
     cut -f"$idxs" "~{prefix}.vcf2bed.bed" \
-    | sed 's/^name/\#VID/g' \
-    | gzip -c \
-    > "~{prefix}.frequencies.preclean.txt.gz"
+      | sed 's/^name/\#VID/g' \
+      | gzip -c \
+      > "~{prefix}.frequencies.preclean.txt.gz"
     if [ ! -z "~{pcrplus_samples_list}" ]; then
       echo -e "dummy\tPCRMINUS\ndummy2\tPCRPLUS" > dummy.tsv
     else
@@ -481,9 +453,9 @@ task GetAfTables {
       AC_idx=$( zcat "~{prefix}.frequencies.txt.gz" | sed -n '1p' | sed 's/\t/\n/g' | awk -v PCR="$PCR" '{ if ($1==PCR"_AC") print NR }' )
       AN_idx=$( zcat "~{prefix}.frequencies.txt.gz" | sed -n '1p' | sed 's/\t/\n/g' | awk -v PCR="$PCR" '{ if ($1==PCR"_AN") print NR }' )
       zcat "~{prefix}.frequencies.txt.gz" \
-      | sed '1d' \
-      | awk -v FS="\t" -v OFS="\t" -v AC="$AC_idx" -v AN="$AN_idx" \
-        '{ print $1, $(AC), $(AN) }' \
+        | sed '1d' \
+        | awk -v FS="\t" -v OFS="\t" -v AC="$AC_idx" -v AN="$AN_idx" \
+          '{ print $1, $(AC), $(AN) }' \
       > ~{prefix}."$PCR".AF_preMinGQ.txt
     done
     if [ ! -z ~{prefix}.PCRPLUS.AF_preMinGQ.txt ]; then
