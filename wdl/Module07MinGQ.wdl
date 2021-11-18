@@ -10,6 +10,7 @@ workflow Module07MinGQ {
   input {
     String sv_base_mini_docker
     String sv_pipeline_docker
+    String sv_pipeline_updates_docker
     File vcf
     File vcf_idx
     String prefix
@@ -85,10 +86,10 @@ workflow Module07MinGQ {
       input:
         vcf=ReviseSVtypeMEI.updated_vcf,
         vcf_idx=ReviseSVtypeMEI.updated_vcf_idx,
-        contig=contig[0],
         sv_per_shard=1000,
-        prefix=prefix,
-        sv_pipeline_docker=sv_pipeline_docker
+        prefix="~{prefix}.~{contig[0]}",
+        sv_pipeline_docker=sv_pipeline_docker,
+        sv_pipeline_updates_docker=sv_pipeline_updates_docker
     }
     if (defined(pcrplus_samples_list)) {
       call SplitPcrVcf {
@@ -110,11 +111,11 @@ workflow Module07MinGQ {
       input:
         vcf=ReviseSVtypeMEI.updated_vcf,
         vcf_idx=ReviseSVtypeMEI.updated_vcf_idx,
-        contig=contig[0],
         sv_per_shard=1000,
-        prefix=prefix,
+        prefix="~{prefix}.~{contig[0]}",
         sample_pop_assignments=GetSampleLists.sample_PCR_labels,
-        sv_pipeline_docker=sv_pipeline_docker
+        sv_pipeline_docker=sv_pipeline_docker,
+        sv_pipeline_updates_docker=sv_pipeline_updates_docker
     }
     # Gather table of AC/AN/AF for PCRPLUS and PCRMINUS samples
     call GetAfTables {
@@ -263,53 +264,6 @@ workflow Module07MinGQ {
     File? filter_lookup_table = build_tree_PCRMINUS.filter_lookup_table
   }
 }
-
-# revise svtype of MEIs to SVTYPE=MEI
-task ReviseSVtypeMEI{
-  input{
-    File vcf
-    File vcf_idx
-    String prefix
-    String sv_base_mini_docker
-    RuntimeAttr? runtime_attr_override
-  }
-
-  RuntimeAttr default_attr = object {
-    cpu_cores: 1, 
-    mem_gb: 3.75, 
-    disk_gb: 100,
-    boot_disk_gb: 10,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
-  
-  command <<<
-    zcat ~{vcf} | grep '#' > ~{prefix}.vcf
-    zcat ~{vcf} | grep -v '#' | grep "INS:ME" | sed -e "s/SVTYPE=INS/SVTYPE=MEI/" >> ~{prefix}.vcf
-    zcat ~{vcf} | grep -v '#' | grep -v "INS:ME"  >> ~{prefix}.vcf
-    mkdir tmp
-    vcf-sort -t tmp/ ~{prefix}.vcf | bgzip > ~{prefix}.vcf.gz
-    tabix -p vcf ~{prefix}.vcf.gz
-  >>>
-
-  output{
-    File updated_vcf = "~{prefix}.vcf.gz"
-    File updated_vcf_idx = "~{prefix}.vcf.gz.tbi"
-  }
-
-  runtime {
-    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
-    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
-    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_base_mini_docker
-    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-  }
-}
-
 
 # Get lists of PCRPLUS and PCRMINUS samples present in input VCF
 task GetSampleLists {
