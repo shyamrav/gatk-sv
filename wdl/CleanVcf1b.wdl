@@ -65,7 +65,7 @@ workflow CleanVcf1b {
             runtime_attr_override=runtime_attr_override_build_dict
     }
 
-    call CleanVcf5.ScatterVcf {
+    call MiniTasks.ScatterVcf {
         input:
             vcf=intermediate_vcf,
             records_per_shard=records_per_shard,

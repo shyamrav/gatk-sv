@@ -12,8 +12,7 @@ workflow ScatterCpxGenotyping {
   input {
     File bin_exclude
     File vcf
-    Int n_master_vcf_shards
-    Int n_master_min_vars_per_vcf_shard
+    Int records_per_shard
     Array[String] batches
     Array[File] coverage_files
     Array[File] rd_depth_sep_cutoff_files
@@ -32,6 +31,7 @@ workflow ScatterCpxGenotyping {
 
     String linux_docker
     String sv_base_mini_docker
+    String sv_pipeline_updates_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
 
@@ -57,18 +57,17 @@ workflow ScatterCpxGenotyping {
   String contig_prefix = prefix + "." + contig
 
   # Shard VCF into even slices
-  call MiniTasks.SplitVcf as SplitVcfToGenotype {
+  call MiniTasks.ScatterVcf as SplitVcfToGenotype {
     input:
       vcf=vcf,
-      prefix=contig_prefix + ".shard_",
-      n_shards=n_master_vcf_shards,
-      min_vars_per_shard=n_master_min_vars_per_vcf_shard,
-      sv_base_mini_docker=sv_base_mini_docker,
+      prefix=contig_prefix,
+      records_per_shard=records_per_shard,
+      sv_pipeline_docker=sv_pipeline_updates_docker,
       runtime_attr_override=runtime_override_split_vcf_to_genotype
   }
 
   # Scatter genotyping over shards
-  scatter ( shard in SplitVcfToGenotype.vcf_shards ) {
+  scatter ( shard in SplitVcfToGenotype.shards ) {
     # Run genotyping
     call GenotypeCpx.GenotypeCpxCnvs as GenotypeShard {
       input:

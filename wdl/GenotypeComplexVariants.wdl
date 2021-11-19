@@ -30,6 +30,7 @@ workflow GenotypeComplexVariants {
 
     String linux_docker
     String sv_base_mini_docker
+    String sv_pipeline_updates_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
 
@@ -80,8 +81,7 @@ workflow GenotypeComplexVariants {
       input:
         bin_exclude=bin_exclude,
         vcf=complex_resolve_vcfs[i],
-        n_master_vcf_shards=200,
-        n_master_min_vars_per_vcf_shard=5000,
+        records_per_shard=50000,
         batches=batches,
         coverage_files=bincov_files,
         rd_depth_sep_cutoff_files=depth_gt_rd_sep_files,
@@ -97,6 +97,7 @@ workflow GenotypeComplexVariants {
         hail_script=hail_script,
         project=project,
         linux_docker=linux_docker,
+        sv_pipeline_updates_docker=sv_pipeline_updates_docker,
         sv_base_mini_docker=sv_base_mini_docker,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
