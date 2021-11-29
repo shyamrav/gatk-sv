@@ -404,8 +404,11 @@ task SvtkResolve {
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
   Float input_size = size([vcf, merged_discfile], "GiB")
+  Float scaled_mem_gib = 3 + size(vcf, "GiB") * 40 + size(merged_discfile, "GiB") * 80
+  # Cap memory at largest N2 VM size of 512 GB (476.8 GiB)
+  Float default_mem_gib = if (scaled_mem_gib < 476.0) then scaled_mem_gib else 476.0
   RuntimeAttr runtime_default = object {
-    mem_gb: 3 + size(vcf, "GiB") * 40 + size(merged_discfile, "GiB") * 80,
+    mem_gb: default_mem_gib,
     disk_gb: ceil(10 + input_size * 12),
     cpu_cores: 1,
     preemptible_tries: 3,
