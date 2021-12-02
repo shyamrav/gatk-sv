@@ -73,9 +73,15 @@ task StandardizeVCFs {
     do
       vcf=${vcfs[$i]}
       sample_id=${sample_ids[$i]}
+      unsorted_vcf=~{caller}.${sample_id}_unsorted.vcf
+      if [ ~{caller} == "scramble" ]
+      then
+        zcat $vcf > $unsorted_vcf
+      else
+        svtk standardize --sample-names ${sample_id} --prefix ~{caller}_${sample_id} --contigs ~{contigs} --min-size ~{min_svsize} $vcf $unsorted_vcf ~{caller}
+      fi
       sample_no=`printf %03d $i`
-      svtk standardize --sample-names ${sample_id} --prefix ~{caller}_${sample_id} --contigs ~{contigs} --min-size ~{min_svsize} $vcf ~{caller}.${sample_id}_unsorted.vcf ~{caller}
-      vcf-sort -c ~{caller}.${sample_id}_unsorted.vcf | bgzip -c > std_${sample_no}.~{caller}.${sample_id}.vcf.gz
+      vcf-sort -c $unsorted_vcf | bgzip -c > std_${sample_no}.~{caller}.${sample_id}.vcf.gz
     done
   >>>
 

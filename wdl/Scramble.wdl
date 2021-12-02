@@ -23,7 +23,7 @@ workflow Scramble {
     bam_or_cram_file: "A .bam or .cram file to search for SVs. crams are preferable because they localise faster and use less disk."
     bam_or_cram_index: "Index for bam_or_cram_file."
     sample_name: "A sample name. Outputs will be sample_name+'.scramble.insertions.vcf.gz' and sample_name+'.scramble.deletions.vcf.gz'."
-    reference_fasta: "A FASTA file (may be compressed) with the reference used to align bam or cram file."
+    reference_fasta: "A FASTA file with the reference used to align bam or cram file."
     detect_deletions: "Run deletion detection as well as mobile element insertion."
   }
   
@@ -84,7 +84,7 @@ task RunScramble {
     xDir=$PWD
     scrambleDir="/app"
 
-    zcat ~{reference_fasta} | makeblastdb -in - -parse_seqids -title ref -dbtype nucl -out ref
+    cat ~{reference_fasta} | makeblastdb -in - -parse_seqids -title ref -dbtype nucl -out ref
     $scrambleDir/cluster_identifier/src/build/cluster_identifier ~{bam_or_cram_file} > clusters.txt
     split -a3 -l3000 clusters.txt xyzzy
 
@@ -96,13 +96,18 @@ task RunScramble {
     done
 
     echo '##fileformat=VCFv4.3' > hdr
+    echo '##reference='"~{reference_fasta}" >> hdr
+    echo '##source=scramble' >> hdr
     echo '##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">' >> hdr
     echo '##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">' >> hdr
     echo '##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Difference in length between REF and ALT alleles">' >> hdr
+    echo '##INFO=<ID=ALGORITHMS,Number=.,Type=String,Description="Source algorithms">' >> hdr
+    echo '##INFO=<ID=STRANDS,Number=1,Type=String,Description="Breakpoint strandedness [++,+-,-+,--]">' >> hdr
+    echo '##INFO=<ID=CHR2,Number=1,Type=String,Description="Chromosome for END coordinate">' >> hdr
     echo '##INFO=<ID=MEI_START,Number=1,Type=Integer,Description="Start of alignment to canonical MEI sequence">' >> hdr
-    echo '##reference='"~{reference_fasta}" >> hdr
+    echo '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' >> hdr
     blastdbcmd -db ref -entry all -outfmt '##contig=<ID=%a,length=%l>' >> hdr
-    echo '#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO' >> hdr
+    echo '#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	'"~{sample_name}" >> hdr
 
     cp hdr insertsVCF.tmp
 
@@ -112,7 +117,7 @@ task RunScramble {
     echo '  start=loc[2]+1' >> processInserts.awk
     echo '  len=length($8)' >> processInserts.awk
     echo '  end=start+len-1' >> processInserts.awk
-    echo '  print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10 }' >> processInserts.awk
+    echo '  print loc[1],start,".","N","<INS:ME:" toupper($2) ">",int($6),"PASS","END=" end ";SVTYPE=INS;SVLEN=" len ";MEI_START=" $10 ";STRANDS=+-;CHR2=" loc[1] ";ALGORITHMS=scramble","GT","0/1" }' >> processInserts.awk
 
     awk -f processInserts.awk xyzzy???_MEIs.txt >> insertsVCF.tmp
     bcftools sort -Oz <insertsVCF.tmp >"~{sample_name}.scramble.insertions.vcf.gz"
@@ -125,7 +130,7 @@ task RunScramble {
       echo '{ FS=OFS="\t" }' > processDeletes.awk
       echo '{ if(FNR<2)next' >> processDeletes.awk
       echo '  Q= $11=="NA" ? ($15=="NA"?".":$15) : ($15=="NA"?$11:($11+$15)/2)' >> processDeletes.awk
-      echo '  print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5 }' >> processDeletes.awk
+      echo '  print $1,$2+1,".","N","<DEL>",Q=="."?".":int(Q),"PASS","END=" $3+1 ";SVTYPE=DEL;SVLEN=" $5 ";STRANDS=+-;CHR2=" $1 ";ALGORITHMS=scramble","GT","0/1" }' >> processDeletes.awk
 
       awk -f processDeletes.awk xyzzy???_PredictedDeletions.txt >> deletesVCF.tmp
       bcftools sort -Oz <deletesVCF.tmp >"~{sample_name}.scramble.deletions.vcf.gz"
