@@ -12,6 +12,7 @@ workflow GenotypeComplexVariants {
     Array[File] depth_vcfs
 
     Boolean merge_vcfs = false
+    Int? records_per_shard
 
     Array[File] complex_resolve_vcfs
     Array[File] complex_resolve_vcf_indexes
@@ -81,7 +82,7 @@ workflow GenotypeComplexVariants {
       input:
         bin_exclude=bin_exclude,
         vcf=complex_resolve_vcfs[i],
-        records_per_shard=50000,
+        records_per_shard=select_first([records_per_shard, 50000]),
         batches=batches,
         coverage_files=bincov_files,
         rd_depth_sep_cutoff_files=depth_gt_rd_sep_files,
