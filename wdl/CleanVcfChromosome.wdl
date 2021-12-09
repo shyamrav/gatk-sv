@@ -613,13 +613,13 @@ task StitchFragmentedCnvs {
 
   Float input_size = size(vcf, "GB")
   RuntimeAttr runtime_default = object {
-    mem_gb: ceil(2.0 + input_size * 3),
-    disk_gb: ceil(10.0 + input_size * 5),
-    cpu_cores: 1,
-    preemptible_tries: 3,
-    max_retries: 1,
-    boot_disk_gb: 10
-  }
+                                  mem_gb: 7.5,
+                                  disk_gb: ceil(10.0 + input_size * 2),
+                                  cpu_cores: 1,
+                                  preemptible_tries: 3,
+                                  max_retries: 1,
+                                  boot_disk_gb: 10
+                                }
   RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
   Float mem_gb = select_first([runtime_override.mem_gb, runtime_default.mem_gb])
   Int java_mem_mb = ceil(mem_gb * 1000 * 0.8)
@@ -636,13 +636,15 @@ task StitchFragmentedCnvs {
 
   command <<<
     set -euo pipefail
-    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
-      ~{vcf} \
-      tmp.vcf.gz
+    echo "First pass..."
+    java -Xmx~{java_mem_mb}M -jar ${STITCH_JAR} 0.2 200000 0.2 ~{vcf} \
+      | bgzip \
+      > tmp.vcf.gz
     rm ~{vcf}
-    /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh \
-      tmp.vcf.gz \
-      ~{prefix}.vcf.gz
+    echo "Second pass..."
+    java -Xmx~{java_mem_mb}M -jar ${STITCH_JAR} 0.2 200000 0.2 tmp.vcf.gz \
+      | bgzip \
+      > ~{prefix}.vcf.gz
   >>>
 
   output {
