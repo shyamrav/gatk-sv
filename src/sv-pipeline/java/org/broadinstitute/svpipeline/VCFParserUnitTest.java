@@ -29,7 +29,7 @@ public final class VCFParserUnitTest {
             caughtIt = true;
         }
         if ( !caughtIt ) {
-            throw new AssertionError("assertions aren't turned on, so you're not testing anything.");
+            throw new AssertionError("assertions aren't turned on (with -ea), so you're not testing anything.");
         }
     }
 

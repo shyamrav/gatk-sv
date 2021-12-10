@@ -57,6 +57,16 @@ RUN cd /opt/sv-pipeline/java && \
     jar cfe build/StitchFragmentedCNVs.jar "org.broadinstitute.svpipeline.StitchFragmentedCNVs" -C build/classes . && \
     rm -r build/classes
 
+# Compile StitchFragmentedCNVs unit tests
+ENV STITCH_UNIT_TEST_JAR="/opt/sv-pipeline/java/build/StitchFragmentedCNVsUnitTest.jar"
+RUN cd /opt/sv-pipeline/java && \
+    mkdir -p build/classes && \
+    javac -d build/classes org/broadinstitute/svpipeline/StitchFragmentedCNVsUnitTest.java org/broadinstitute/svpipeline/StitchFragmentedCNVs.java org/broadinstitute/svpipeline/VCFParser.java && \
+    jar cfe build/StitchFragmentedCNVsUnitTest.jar "org.broadinstitute.svpipeline.StitchFragmentedCNVsUnitTest" -C build/classes . && \
+    echo "Running StitchFragmentedCNVsUnitTest..." && \
+    java -enableassertions -jar STITCH_UNIT_TEST_JAR && \
+    rm -r build/classes $STITCH_UNIT_TEST_JAR \
+
 # Compile VCFParser unit tests
 ENV VCF_PARSER_UNIT_TEST_JAR="/opt/sv-pipeline/java/build/VCFParserUnitTest.jar"
 RUN cd /opt/sv-pipeline/java && \
