@@ -2,7 +2,8 @@
   "GATKSVPipelineBatch.use_delly": "false",
   "GATKSVPipelineBatch.use_manta": "true",
   "GATKSVPipelineBatch.use_wham": "true",
-  "GATKSVPipelineBatch.use_melt": "true",
+  "GATKSVPipelineBatch.use_melt": "false",
+  "GATKSVPipelineBatch.use_scramble": "true",
 
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.gvcf_gcs_project_for_requester_pays" : "broad-dsde-methods",
 
@@ -15,7 +16,7 @@
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.gcnv_model_tars" : {{ ref_panel.gcnv_model_tars | tojson }},
 
   "GATKSVPipelineBatch.melt_docker" : {{ dockers.melt_docker | tojson }},
-
+  "GATKSVPipelineBatch.scramble_docker" : {{ dockers.scramble_docker | tojson }},
   "GATKSVPipelineBatch.manta_docker": {{ dockers.manta_docker | tojson }},
   "GATKSVPipelineBatch.wham_docker": {{ dockers.wham_docker | tojson }},
   "GATKSVPipelineBatch.cnmops_docker": {{ dockers.cnmops_docker | tojson }},
@@ -63,7 +64,7 @@
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.min_svsize": "50",
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.run_matrix_qc": "true",
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.ploidy_sample_psi_scale": "0.001",
-  "GATKSVPipelineBatch.GATKSVPipelinePhase1.contig_ploidy_model_tar" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/gcnv/ref_panel_1kg_v1-contig-ploidy-model.tar.gz",
+  "GATKSVPipelineBatch.GATKSVPipelinePhase1.contig_ploidy_model_tar" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/v2/gcnv/ref_panel_1kg_v2-contig-ploidy-model.tar.gz",
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.gcnv_learning_rate" : 0.03,
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.gcnv_num_thermal_advi_iters" : 250,
   "GATKSVPipelineBatch.GATKSVPipelinePhase1.gcnv_max_advi_iter_first_epoch" : 1000,

@@ -60,6 +60,7 @@ task RunScramble {
     Boolean detect_deletions
     String scramble_docker
     RuntimeAttr? runtime_attr_override
+    File? NOT_A_FILE
   }
 
   RuntimeAttr default_attr = object {
@@ -75,8 +76,8 @@ task RunScramble {
   output {
     File insertions_vcf = "~{sample_name}.scramble.insertions.vcf.gz"
     File insertions_index = "~{sample_name}.scramble.insertions.vcf.gz.tbi"
-    File? deletions_vcf = "~{sample_name}.scramble.deletions.vcf.gz"
-    File? deletions_index = "~{sample_name}.scramble.deletions.vcf.gz.tbi"
+    File? deletions_vcf = if detect_deletions then "~{sample_name}.scramble.deletions.vcf.gz" else NOT_A_FILE
+    File? deletions_index = if detect_deletions then "~{sample_name}.scramble.deletions.vcf.gz.tbi" else NOT_A_FILE
   }
   command <<<
     set -euo pipefail
