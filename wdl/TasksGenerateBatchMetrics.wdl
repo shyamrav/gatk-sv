@@ -189,8 +189,8 @@ task MergeStats {
 
   command <<<
     set -euo pipefail
-    echo 'chr	Start	End	CNVID	SampleIDs	Type	Median_Power	P	2ndMaxP	Model	Median_Rank	Median_Separation' > ~{prefix}.stats
-    for f in ~{sep=" "  stats}; do sed 1d $f >>{prefix}.stats; done
+    for f in ~{sep=" "  stats}; do sed -n 1p $f >~{prefix}.stats; break; done
+    for f in ~{sep=" "  stats}; do sed 1d $f >>~{prefix}.stats; done
   >>>
 
   output {
