@@ -189,9 +189,8 @@ task MergeStats {
 
   command <<<
     set -euo pipefail
-    while read split; do
-      sed -e '1d' $split;
-    done < ~{write_lines(stats)} | cat <(head -n1 ~{stats[0]}) - > ~{prefix}.stats
+    echo 'chr	Start	End	CNVID	SampleIDs	Type	Median_Power	P	2ndMaxP	Model	Median_Rank	Median_Separation' > ~{prefix}.stats
+    for f in ~{sep=" "  stats}; do sed 1d $f >>{prefix}.stats; done
   >>>
 
   output {
