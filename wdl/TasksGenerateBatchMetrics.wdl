@@ -189,6 +189,7 @@ task MergeStats {
 
   command <<<
     set -euo pipefail
+    touch ~{prefix}.stats
     for f in ~{sep=" "  stats}; do sed -n 1p $f >~{prefix}.stats; break; done
     for f in ~{sep=" "  stats}; do sed 1d $f >>~{prefix}.stats; done
   >>>
