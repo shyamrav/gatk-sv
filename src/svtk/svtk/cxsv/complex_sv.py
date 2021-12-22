@@ -181,6 +181,14 @@ class ComplexSV:
         if len(varGQs) > 0 and 'varGQ' in self.vcf_record.header.info.keys():
             self.vcf_record.info['varGQ'] = max(varGQs)
 
+        # if resolved as a CNV, ensure RD_CN and RD_GQ are set
+        if len(self.records) > 1 and self.vcf_record.info['SVTYPE'] in ['DEL', 'DUP', 'CNV'] and len(self.cnvs) > 0:
+            cnv_record = self.cnvs[0]
+            if 'RD_CN' in cnv_record.format.keys() and 'RD_GQ' in cnv_record.format.keys():
+                for sample in self.vcf_record.samples:
+                    self.vcf_record.samples[sample]['RD_CN'] = cnv_record.samples[sample]['RD_CN']
+                    self.vcf_record.samples[sample]['RD_GQ'] = cnv_record.samples[sample]['RD_GQ']
+
     @property
     def record_ids(self):
         return [r.id for r in self.records]
