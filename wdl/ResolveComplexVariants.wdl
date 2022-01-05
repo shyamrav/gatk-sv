@@ -23,8 +23,8 @@ workflow ResolveComplexVariants {
     File pe_exclude_list
     File ref_dict
 
-    File hail_script
-    String project
+    Boolean use_hail = false
+    String? gcs_project
 
     String sv_base_mini_docker
     String sv_pipeline_docker
@@ -34,10 +34,7 @@ workflow ResolveComplexVariants {
     RuntimeAttr? runtime_override_update_sr_list_fail
     RuntimeAttr? runtime_override_integrate_resolved_vcfs
     RuntimeAttr? runtime_override_rename_variants
-
     RuntimeAttr? runtime_override_breakpoint_overlap_filter
-
-    # overrides for mini tasks
     RuntimeAttr? runtime_override_subset_inversions
     RuntimeAttr? runtime_override_concat
 
@@ -49,7 +46,6 @@ workflow ResolveComplexVariants {
     RuntimeAttr? runtime_override_resolve_cpx_per_shard
     RuntimeAttr? runtime_override_restore_unresolved_cnv_per_shard
     RuntimeAttr? runtime_override_concat_resolved_per_shard
-    RuntimeAttr? runtime_override_merge_resolve_inner
     RuntimeAttr? runtime_override_pull_vcf_shard
     RuntimeAttr? runtime_override_preconcat
     RuntimeAttr? runtime_override_hail_merge
@@ -62,7 +58,6 @@ workflow ResolveComplexVariants {
     RuntimeAttr? runtime_override_resolve_cpx_per_shard_inv
     RuntimeAttr? runtime_override_restore_unresolved_cnv_per_shard_inv
     RuntimeAttr? runtime_override_concat_resolved_per_shard_inv
-    RuntimeAttr? runtime_override_merge_resolve_inner_inv
     RuntimeAttr? runtime_override_pull_vcf_shard_inv
     RuntimeAttr? runtime_override_preconcat_inv
     RuntimeAttr? runtime_override_hail_merge_inv
@@ -101,8 +96,8 @@ workflow ResolveComplexVariants {
         ref_dict=ref_dict,
         precluster_distance=50000000,
         precluster_overlap_frac=0.1,
-        hail_script=hail_script,
-        project=project,
+        use_hail=use_hail,
+        gcs_project=gcs_project,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
         runtime_override_get_se_cutoff=runtime_override_get_se_cutoff_inv,
@@ -112,7 +107,6 @@ workflow ResolveComplexVariants {
         runtime_override_resolve_cpx_per_shard=runtime_override_resolve_cpx_per_shard_inv,
         runtime_override_restore_unresolved_cnv_per_shard=runtime_override_restore_unresolved_cnv_per_shard_inv,
         runtime_override_concat_resolved_per_shard=runtime_override_concat_resolved_per_shard_inv,
-        runtime_override_merge_resolve_inner=runtime_override_merge_resolve_inner_inv,
         runtime_override_pull_vcf_shard=runtime_override_pull_vcf_shard_inv,
         runtime_override_preconcat=runtime_override_preconcat_inv,
         runtime_override_hail_merge=runtime_override_hail_merge_inv,
@@ -146,8 +140,8 @@ workflow ResolveComplexVariants {
         ref_dict=ref_dict,
         precluster_distance=2000,
         precluster_overlap_frac=0.000000001,
-        hail_script=hail_script,
-        project=project,
+        use_hail=use_hail,
+        gcs_project=gcs_project,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
         runtime_override_get_se_cutoff=runtime_override_get_se_cutoff,
@@ -157,7 +151,6 @@ workflow ResolveComplexVariants {
         runtime_override_resolve_cpx_per_shard=runtime_override_resolve_cpx_per_shard,
         runtime_override_restore_unresolved_cnv_per_shard=runtime_override_restore_unresolved_cnv_per_shard,
         runtime_override_concat_resolved_per_shard=runtime_override_concat_resolved_per_shard,
-        runtime_override_merge_resolve_inner=runtime_override_merge_resolve_inner,
         runtime_override_pull_vcf_shard=runtime_override_pull_vcf_shard,
         runtime_override_preconcat=runtime_override_preconcat,
         runtime_override_hail_merge=runtime_override_hail_merge,
