@@ -48,11 +48,15 @@ workflow MakeCohortVcf {
     Int max_shard_size_resolve
     Int max_shards_per_chrom_clean_vcf_step1
     Int min_records_per_shard_clean_vcf_step1
+    Int clean_vcf1b_records_per_shard
     Int samples_per_clean_vcf_step2_shard
     Int clean_vcf5_records_per_shard
     Int? clean_vcf5_threads_per_task
     Float min_sr_background_fail_batches
     Int? max_samples_per_shard_clean_vcf_step3
+
+    String chr_x
+    String chr_y
 
     File empty_file
     File? outlier_samples_list
@@ -78,6 +82,7 @@ workflow MakeCohortVcf {
     String linux_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
+    String sv_pipeline_updates_docker
     String sv_pipeline_rdtest_docker
     String sv_pipeline_qc_docker
 
@@ -356,6 +361,7 @@ workflow MakeCohortVcf {
       linux_docker=linux_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
+      sv_pipeline_updates_docker=sv_pipeline_updates_docker,
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       runtime_override_ids_from_median=runtime_override_ids_from_median,
       runtime_override_split_vcf_to_genotype=runtime_override_split_vcf_to_genotype,
@@ -382,8 +388,11 @@ workflow MakeCohortVcf {
       merged_ped_file=ped_file,
       contig_list=contig_list,
       allosome_fai=allosome_fai,
+      chr_x=chr_x,
+      chr_y=chr_y,
       max_shards_per_chrom_step1=max_shards_per_chrom_clean_vcf_step1,
       min_records_per_shard_step1=min_records_per_shard_clean_vcf_step1,
+      clean_vcf1b_records_per_shard=clean_vcf1b_records_per_shard,
       samples_per_step2_shard=samples_per_clean_vcf_step2_shard,
       max_samples_per_shard_step3=max_samples_per_shard_clean_vcf_step3,
       clean_vcf5_records_per_shard=clean_vcf5_records_per_shard,
@@ -393,6 +402,7 @@ workflow MakeCohortVcf {
       linux_docker=linux_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
+      sv_pipeline_updates_docker=sv_pipeline_updates_docker,
       runtime_attr_ids_from_vcf=runtime_attr_ids_from_vcf_clean,
       runtime_attr_subset_ped=runtime_attr_subset_ped_clean,
       runtime_override_preconcat_clean_final=runtime_override_preconcat_clean_final,
