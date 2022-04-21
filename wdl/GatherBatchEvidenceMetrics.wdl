@@ -5,6 +5,7 @@ import "TestUtils.wdl" as tu
 workflow GatherBatchEvidenceMetrics {
   input {
     Array[String] samples
+    Array[String]? all_samples
     String name
     File merged_BAF
     File merged_SR
@@ -118,28 +119,28 @@ workflow GatherBatchEvidenceMetrics {
   call tu.SRMetrics {
     input:
       sr_file = merged_SR,
-      samples = samples,
+      samples = select_first([all_samples, samples]),
       sv_pipeline_base_docker = sv_pipeline_base_docker,
       runtime_attr_override = select_first([runtime_attr_sr_metrics, {"mem_gb": 30, "disk_gb": 100, "preemptible_tries": 0}])
   }
   call tu.PEMetrics {
     input:
       pe_file = merged_PE,
-      samples = samples,
+      samples = select_first([all_samples, samples]),
       sv_pipeline_base_docker = sv_pipeline_base_docker,
       runtime_attr_override = select_first([runtime_attr_pe_metrics, {"mem_gb": 15, "disk_gb": 100, "preemptible_tries": 0}])
   }
   call tu.BincovMetrics {
     input:
       bincov_matrix = merged_bincov,
-      samples = samples,
+      samples = select_first([all_samples, samples]),
       sv_pipeline_base_docker = sv_pipeline_base_docker,
       runtime_attr_override = runtime_attr_bincov_metrics
   }
   call tu.MedcovMetrics {
     input:
       medcov_file = median_cov,
-      samples = samples,
+      samples = select_first([all_samples, samples]),
       baseline_medcov_file = baseline_median_cov,
       sv_pipeline_base_docker = sv_pipeline_base_docker,
       runtime_attr_override = runtime_attr_medcov_metrics

@@ -517,7 +517,8 @@ workflow GatherBatchEvidence {
     call metrics.GatherBatchEvidenceMetrics {
       input:
         name = batch,
-        samples = all_samples,
+        samples = samples,
+        all_samples = all_samples,
         merged_BAF = select_first([baf_out]),
         merged_SR = EvidenceMerging.merged_SR,
         merged_PE = EvidenceMerging.merged_PE,
