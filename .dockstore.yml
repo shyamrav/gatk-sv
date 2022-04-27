@@ -3,6 +3,7 @@ workflows:
   - name: GATKSVPipelineBatch
     subclass: WDL
     primaryDescriptorPath: /wdl/GATKSVPipelineBatch.wdl
-  - name: GATKSVPipelineSingleSample
+  - name: GATKSVPipelineSingleSample.wdl
     subclass: WDL
     primaryDescriptorPath: /wdl/GATKSVPipelineSingleSample.wdl
+    publish: true
