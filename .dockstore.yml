@@ -3,6 +3,6 @@ workflows:
   - name: GATKSVPipelineBatch
     subclass: WDL
     primaryDescriptorPath: /wdl/GATKSVPipelineBatch.wdl
-  - name: GATKSVPipelineSingleSample_2
+  - name: GATKSVPipelineSingleSample
     subclass: WDL
     primaryDescriptorPath: /wdl/GATKSVPipelineSingleSample.wdl
