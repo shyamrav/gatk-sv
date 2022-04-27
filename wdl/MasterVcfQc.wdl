@@ -17,14 +17,15 @@ workflow MasterVcfQc {
     String prefix
     Int sv_per_shard
     Int samples_per_shard
-    Array[File]? thousand_genomes_tarballs
-    Array[File]? hgsv_tarballs
-    Array[File]? asc_tarballs
+    Array[File]? thousand_genomes_benchmark_calls
+    Array[File]? hgsv_benchmark_calls
+    Array[File]? asc_benchmark_calls
     File? sanders_2015_tarball
     File? collins_2017_tarball
     File? werling_2018_tarball
-    Array[String] contigs
+    File primary_contigs_fai
     Int? random_seed
+    Int? max_gq  # Max GQ for plotting. Default = 99, ie. GQ is on a scale of [0,99]. Prior to CleanVcf, use 999
     File? vcf_idx
 
     String sv_base_mini_docker
@@ -68,6 +69,8 @@ workflow MasterVcfQc {
     RuntimeAttr? runtime_override_split_shuffled_list
     RuntimeAttr? runtime_override_merge_and_tar_shard_benchmarks
   }
+  Array[String] contigs = transpose(read_tsv(primary_contigs_fai))[0]
+
   # Scatter raw variant data collection per chromosome
   scatter ( contig in contigs ) {
     # Collect VCF-wide summary stats
@@ -131,6 +134,7 @@ workflow MasterVcfQc {
       runtime_override_tar_shard_vid_lists=runtime_override_tar_shard_vid_lists,
   }
 
+  Int max_gq_ = select_first([max_gq, 99])
   # Plot per-sample stats
   call PlotQcPerSample {
     input:
@@ -138,6 +142,7 @@ workflow MasterVcfQc {
       samples_list=CollectQcVcfwide.samples_list[0],
       per_sample_tarball=CollectPerSampleVidLists.vid_lists,
       prefix=prefix,
+      max_gq=max_gq_,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       runtime_attr_override=runtime_override_plot_qc_per_sample
   }
@@ -150,6 +155,7 @@ workflow MasterVcfQc {
       ped_file=ped_file,
       per_sample_tarball=CollectPerSampleVidLists.vid_lists,
       prefix=prefix,
+      max_gq=max_gq_,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       runtime_attr_override=runtime_override_plot_qc_per_family
   }
@@ -176,12 +182,12 @@ workflow MasterVcfQc {
   }
 
   # Collect external benchmarking vs 1000G
-  if (defined(thousand_genomes_tarballs)) {
+  if (defined(thousand_genomes_benchmark_calls)) {
     call VcfExternalBenchmark as ThousandGBenchmark {
       input:
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         prefix=prefix,
-        benchmarking_archives=select_first([thousand_genomes_tarballs]),
+        benchmarking_archives=select_first([thousand_genomes_benchmark_calls]),
         comparator="1000G_Sudmant",
         sv_pipeline_qc_docker=sv_pipeline_qc_docker,
         runtime_attr_override=runtime_override_thousand_g_benchmark
@@ -199,12 +205,12 @@ workflow MasterVcfQc {
   }
   
   # Collect external benchmarking vs ASC
-  if (defined(hgsv_tarballs)) {
+  if (defined(asc_benchmark_calls)) {
     call VcfExternalBenchmark as AscBenchmark {
       input:
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         prefix=prefix,
-        benchmarking_archives=select_first([asc_tarballs]),
+        benchmarking_archives=select_first([asc_benchmark_calls]),
         comparator="ASC_Werling",
         sv_pipeline_qc_docker=sv_pipeline_qc_docker,
         runtime_attr_override=runtime_override_asc_benchmark
@@ -222,12 +228,12 @@ workflow MasterVcfQc {
   }
   
   # Collect external benchmarking vs HGSV
-  if (defined(hgsv_tarballs)) {
+  if (defined(hgsv_benchmark_calls)) {
     call VcfExternalBenchmark as HgsvBenchmark {
       input:
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         prefix=prefix,
-        benchmarking_archives=select_first([hgsv_tarballs]),
+        benchmarking_archives=select_first([hgsv_benchmark_calls]),
         comparator="HGSV_Chaisson",
         sv_pipeline_qc_docker=sv_pipeline_qc_docker,
         runtime_attr_override=runtime_override_hgsv_benchmark
@@ -526,6 +532,7 @@ task PlotQcPerSample {
     File samples_list
     File per_sample_tarball
     String prefix
+    Int max_gq
     String sv_pipeline_qc_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -576,7 +583,8 @@ task PlotQcPerSample {
       ~{vcf_stats} \
       ~{samples_list} \
       ~{prefix}_perSample/ \
-      ~{prefix}_perSample_plots/
+      ~{prefix}_perSample_plots/ \
+      --maxgq ~{max_gq}
 
     # Prepare output
     tar -czvf ~{prefix}.plotQC_perSample.tar.gz \
@@ -597,6 +605,7 @@ task PlotQcPerFamily {
     File ped_file
     File per_sample_tarball
     String prefix
+    Int max_gq
     String sv_pipeline_qc_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -657,7 +666,8 @@ task PlotQcPerFamily {
         ~{vcf_stats} \
         cleaned.fam \
         ~{prefix}_perSample/ \
-        ~{prefix}_perFamily_plots/
+        ~{prefix}_perFamily_plots/ \
+        --maxgq ~{max_gq}
 
     else
 

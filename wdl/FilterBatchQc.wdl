@@ -13,15 +13,16 @@ workflow FilterBatchQc {
     File? merged_pesr_vcf
     String batch
     File ped_file
-    Array[File]? thousand_genomes_tarballs
-    Array[File]? hgsv_tarballs
-    Array[File]? asc_tarballs
+    Array[File]? thousand_genomes_benchmark_calls
+    Array[File]? hgsv_benchmark_calls
+    Array[File]? asc_benchmark_calls
     File? sanders_2015_tarball
     File? collins_2017_tarball
     File? werling_2018_tarball
 
     File contig_list
     Int? random_seed
+    Int? max_gq
 
     String sv_base_mini_docker
     String sv_pipeline_docker
@@ -71,8 +72,6 @@ workflow FilterBatchQc {
   Array[File?] vcfs_array = [manta_vcf_noOutliers, delly_vcf_noOutliers, melt_vcf_noOutliers, wham_vcf_noOutliers, depth_vcf_noOutliers, merged_pesr_vcf]
   Int num_algorithms = length(algorithms)
 
-  Array[String] contigs = transpose(read_tsv(contig_list))[0]
-
   call util.GetSampleIdsFromVcf {
     input:
       vcf = select_first(vcfs_array),
@@ -89,6 +88,8 @@ workflow FilterBatchQc {
       runtime_attr_override = runtime_attr_subset_ped
   }
 
+  Int max_gq_ = select_first([max_gq, 999])
+
   scatter (i in range(num_algorithms)) {
     if (defined(vcfs_array[i])) {
       call vcf_qc.MasterVcfQc as VcfQc {
@@ -98,14 +99,15 @@ workflow FilterBatchQc {
           prefix="${batch}.${algorithms[i]}_FilterBatch_filtered_vcf",
           sv_per_shard=10000,
           samples_per_shard=100,
-          thousand_genomes_tarballs=thousand_genomes_tarballs,
-          hgsv_tarballs=hgsv_tarballs,
-          asc_tarballs=asc_tarballs,
+          thousand_genomes_benchmark_calls=thousand_genomes_benchmark_calls,
+          hgsv_benchmark_calls=hgsv_benchmark_calls,
+          asc_benchmark_calls=asc_benchmark_calls,
           sanders_2015_tarball=sanders_2015_tarball,
           collins_2017_tarball=collins_2017_tarball,
           werling_2018_tarball=werling_2018_tarball,
-          contigs=contigs,
+          primary_contigs_fai=contig_list,
           random_seed=random_seed,
+          max_gq=max_gq_,
           sv_base_mini_docker=sv_base_mini_docker,
           sv_pipeline_docker=sv_pipeline_docker,
           sv_pipeline_qc_docker=sv_pipeline_qc_docker,
