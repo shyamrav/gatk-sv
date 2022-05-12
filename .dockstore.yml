@@ -7,3 +7,83 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /wdl/GATKSVPipelineSingleSample.wdl
     publish: true
+  - name: GATKSVPipelineBatch_01_GatherSampleEvidence
+    subclass: WDL
+    primaryDescriptorPath: /wdl/GatherSampleEvidence.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_02_EvidenceQC
+    subclass: WDL
+    primaryDescriptorPath: /wdl/EvidenceQC.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_03_TrainGCNV
+    subclass: WDL
+    primaryDescriptorPath: /wdl/TrainGCNV.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_04_GatherBatchEvidence
+    subclass: WDL
+    primaryDescriptorPath: /wdl/GatherBatchEvidence.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_05_ClusterBatch
+    subclass: WDL
+    primaryDescriptorPath: /wdl/ClusterBatch.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_06_GenerateBatchMetrics
+    subclass: WDL
+    primaryDescriptorPath: /wdl/GenerateBatchMetrics.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_07_FilterBatch
+    subclass: WDL
+    primaryDescriptorPath: /wdl/FilterBatch.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_07a_FilterBatchSites
+    subclass: WDL
+    primaryDescriptorPath: /wdl/FilterBatchSites.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_07b_PlotSVCountsPerSample
+    subclass: WDL
+    primaryDescriptorPath: /wdl/PlotSVCountsPerSample.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_07c_FilterBatchSamples
+    subclass: WDL
+    primaryDescriptorPath: /wdl/FilterBatchSamples.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_08_MergeBatchSites
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MergeBatchSites.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_09_GenotypeBatch
+    subclass: WDL
+    primaryDescriptorPath: /wdl/GenotypeBatch.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_09_SingleBatch_GenotypeBatch
+    subclass: WDL
+    primaryDescriptorPath: /wdl/GenotypeBatch.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_10_RegenotypeCNVs
+    subclass: WDL
+    primaryDescriptorPath: /wdl/RegenotypeCNVs.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_10_SingleBatch_RegenotypeCNVs
+    subclass: WDL
+    primaryDescriptorPath: /wdl/RegenotypeCNVs.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_11_MakeCohortVcf
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MakeCohortVcf.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_11_SingleBatch_MakeCohortVcf
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MakeCohortVcf.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_12_AnnotateVcf
+    subclass: WDL
+    primaryDescriptorPath: /wdl/AnnotateVcf.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_12_SingleBatch_AnnotateVcf
+    subclass: WDL
+    primaryDescriptorPath: /wdl/AnnotateVcf.wdl
+    publish: true
+  - name: GATKSVPipelineBatch_extra_FilterOutlierSamples
+    subclass: WDL
+    primaryDescriptorPath: /wdl/FilterOutlierSamples.wdl
+    publish: true
