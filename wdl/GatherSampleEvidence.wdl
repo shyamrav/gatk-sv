@@ -74,7 +74,7 @@ workflow GatherSampleEvidence {
     Float? pct_chimeras
     Float? total_reads
     Int? pf_reads_improper_pairs
-    Bool use_fast_algorithm = true
+    Boolean use_fast_algorithm = true
 
     # Wham inputs
     File wham_include_list_bed_file
