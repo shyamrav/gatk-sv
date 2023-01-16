@@ -74,6 +74,7 @@ workflow GatherSampleEvidence {
     Float? pct_chimeras
     Float? total_reads
     Int? pf_reads_improper_pairs
+    Bool use_fast_algorithm = true
 
     # Wham inputs
     File wham_include_list_bed_file
@@ -255,6 +256,7 @@ workflow GatherSampleEvidence {
         pct_chimeras = pct_chimeras,
         total_reads = total_reads,
         pf_reads_improper_pairs = pf_reads_improper_pairs,
+        use_fast_algorithm = use_fast_algorithm,
         runtime_attr_coverage = runtime_attr_melt_coverage,
         runtime_attr_metrics = runtime_attr_melt_metrics,
         samtools_cloud_docker = samtools_cloud_docker,

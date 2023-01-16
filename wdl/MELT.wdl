@@ -38,6 +38,8 @@ workflow MELT {
     Float? total_reads
     Int? pf_reads_improper_pairs
 
+    Bool use_fast_algorithm = true
+
     String samtools_cloud_docker
     String gatk_docker
     String genomes_in_the_cloud_docker
@@ -113,6 +115,7 @@ workflow MELT {
         reference_fasta = reference_fasta,
         reference_index = reference_index,
         intervals = wgs_metrics_intervals,
+        use_fast_algorithm = use_fast_algorithm,
         genomes_in_the_cloud_docker = genomes_in_the_cloud_docker,
         runtime_attr_override = runtime_attr_coverage
     }
